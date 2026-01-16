@@ -1,20 +1,7 @@
 import fetch from "node-fetch";
 import fs from "fs";
 import path from "path";
-
-async function makeFkontak() {
-  try {
-    const res = await fetch('https://i.postimg.cc/1XgvNWd8/gratis-png-spotify-logo-spotify-computer-icons-podcast-music-apps-thumbnail-(1)-(1)-(1).png')
-    const thumb2 = Buffer.from(await res.arrayBuffer())
-    return {
-      key: { participants: '0@s.whatsapp.net', remoteJid: 'status@broadcast', fromMe: false, id: 'Halo' },
-      message: { locationMessage: { name: 'Spotify', jpegThumbnail: thumb2 } },
-      participant: '0@s.whatsapp.net'
-    }
-  } catch {
-    return undefined
-  }
-}
+import { checkReg } from '../lib/checkReg.js'
 
 async function searchSong(query) {
   const url = `https://spotdown.org/api/song-details?url=${encodeURIComponent(query)}`;
@@ -43,9 +30,19 @@ async function downloadSong(songUrl, outputPath) {
 }
 
 let handler = async (m, { conn, args, usedPrefix }) => {
+  const userId = m.sender
+  const user = global.db.data.users[userId]
+  
+  // Verificación de registro
+  if (await checkReg(m, user)) return
+  
   const query = args.join(" ");
-  if (!query) return conn.reply(m.chat, `Uso: ${usedPrefix}song <nombre de la canción>`, m)
+  if (!query) return conn.reply(m.chat, '> Debe ingresar el nombre de una canción', m)
+  
   try {
+    // Reacción inicial
+    await m.react('🎵')
+    
     const song = await searchSong(query);
 
     const tmpDir = path.join(".", "tmp");
@@ -57,18 +54,31 @@ let handler = async (m, { conn, args, usedPrefix }) => {
 
     const audioBuffer = fs.readFileSync(outputPath);
 
-    const quotedContact = await makeFkontak()
+    // Enviar como documento
     await conn.sendMessage(m.chat, {
-      audio: audioBuffer,
-      mimetype: "audio/mpeg"
-    }, { quoted: quotedContact || m });
+      document: audioBuffer,
+      mimetype: "audio/mpeg",
+      fileName: `${song.title}.mp3`,
+      caption: '> La descarga fue exitosa'
+    }, { quoted: m });
+    
+    // Limpiar archivo temporal
+    fs.unlinkSync(outputPath).catch(() => {})
+    
+    // El engranaje final de KarBot ⚙️
+    await m.react('⚙️')
+    
   } catch (err) {
-    await conn.reply(m.chat, `❌ Error: ${err.message}`, m);
+    console.error('❌ Error en spotify:', err)
+    await m.react('❌')
+    await conn.reply(m.chat, '> Lo siento, hubo un error.', m)
   }
 };
 
 
-// handler.tags = ["downloader"];
-handler.command = ["song"];
+handler.help = ['spotify']    
+handler.tags = ['downloader'] 
+handler.command = ["spotify", "spoti", "song"];
+handler.group = true;
 
 export default handler;

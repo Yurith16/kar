@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { checkReg } from '../lib/checkReg.js'
 
 const SEARCH_ENDPOINT = 'https://itunes.apple.com/search'
 const DEFAULT_LIMIT = 5
@@ -109,35 +110,28 @@ function mapResult(item) {
 }
 
 function buildHumanMessage(results, { term, artist }, usedPrefix = '.') {
-  const header = [`Resultados para "${term}"${artist ? ` con artista "${artist}"` : ''}:`, ' ']
+  const header = [`> Resultados para "${term}"${artist ? ` con artista "${artist}"` : ''}:`, ' ']
   const body = results.map((result, index) => {
-    const lines = [`*${index + 1}.* ${result.title || 'Sin título'} — ${result.artist || 'Desconocido'}`]
-    if (result.album) lines.push(`   Álbum: ${result.album}`)
-    if (result.releaseDate) {
-      const parsedDate = new Date(result.releaseDate)
-      if (!Number.isNaN(parsedDate.getTime())) {
-        lines.push(`   Lanzamiento: ${parsedDate.toISOString().split('T')[0]}`)
-      }
-    }
-    lines.push(`   Link: ${result.appleUrl || 'sin enlace'}`)
-    if (result.previewUrl) lines.push(`   Preview: ${result.previewUrl}`)
+    const lines = [`> *${index + 1}.* ${result.title || 'Sin título'}`]
+    lines.push(`> 👤 *Artista:* ${result.artist || 'Desconocido'}`)
+    lines.push(`> 🔗 *Link:* ${result.appleUrl || 'sin enlace'}`)
     return lines.join('\n')
   })
   const footer = [
     ' ',
-    `Responde a este mensaje con *${usedPrefix}appledl <número>* para descargar la canción seleccionada.`
+    `> Responde con *${usedPrefix}appledl <número>*`
   ]
   return [...header, ...body, ...footer].join('\n')
 }
 
 const handler = async (m, { conn, args, usedPrefix, command }) => {
+  let who = m.quoted ? m.quoted.sender : m.mentionedJid && m.mentionedJid[0] ? m.mentionedJid[0] : m.sender
+  let user = global.db.data.users[who]
+  if (await checkReg(m, user)) return
+
   const options = parseArgs(args)
   if (!options.term) {
-    return conn.reply(
-      m.chat,
-      `Uso: ${usedPrefix}${command} <término> [--artist nombre] [--limit 1-10]\nEjemplo: ${usedPrefix}${command} bad bunny --artist "feid"`,
-      m
-    )
+    return conn.reply(m.chat, `> Debe ingresar un término para buscar.`, m)
   }
 
   await m.react?.('⏳')
@@ -148,7 +142,7 @@ const handler = async (m, { conn, args, usedPrefix, command }) => {
 
     if (!simplified.length) {
       await m.react?.('❌')
-      return conn.reply(m.chat, 'No se encontraron coincidencias para tu búsqueda.', m)
+      return conn.reply(m.chat, '> No se encontraron coincidencias.', m)
     }
 
     let sentMessage
@@ -166,12 +160,12 @@ const handler = async (m, { conn, args, usedPrefix, command }) => {
     return true
   } catch (error) {
     await m.react?.('❌')
-    return conn.reply(m.chat, `La búsqueda falló: ${error?.response?.data?.errorMessage || error.message || error}`, m)
+    return conn.reply(m.chat, `> La búsqueda falló.`, m)
   }
 }
 
-
-// handler.tags = ['search']
+handler.help = ['applesearch']
+handler.tags = ['downloader']
 handler.command = ['applesearch']
 
 export default handler

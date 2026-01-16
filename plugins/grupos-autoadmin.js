@@ -1,31 +1,45 @@
+import { checkReg } from '../lib/checkReg.js'
+
 let autoadminGlobal = global.autoadminGlobal ?? true
 global.autoadminGlobal = autoadminGlobal
 
 const handler = async (m, { conn, isAdmin, isBotAdmin, isROwner, usedPrefix, command, args }) => {
-  // Si el comando está desactivado globalmente, avisa
+  const userId = m.sender
+  const user = global.db.data.users[userId]
+  
+  // Verificación de registro
+  if (await checkReg(m, user)) return
+  
+  // Si el comando está desactivado globalmente
   if (!global.autoadminGlobal && !isROwner) {
-    return conn.reply(m.chat, '> ⓘ \`El sistema de autoadmin está desactivado globalmente\`', m)
+    return conn.reply(m.chat, '> Sistema desactivado.', m)
   }
 
-  // Si el bot no es admin, avisa
+  // Si el bot no es admin
   if (!isBotAdmin) {
-    return conn.reply(m.chat, '> ⓘ \`Necesito ser administradora para poder promover usuarios\`', m)
+    return conn.reply(m.chat, '> Necesito ser admin.', m)
   }
 
-  // Si ya es admin, avisa
+  // Si ya es admin
   if (isAdmin) {
-    return conn.reply(m.chat, '> ⓘ \`Ya tienes privilegios de administrador en este grupo\`', m)
+    return conn.reply(m.chat, '> Ya eres admin.', m)
   }
 
   try {
-    await m.react('🕒')
+    // Reacción inicial
+    await m.react('🔧')
+    
+    // Promover usuario
     await conn.groupParticipantsUpdate(m.chat, [m.sender], 'promote')
-    await m.react('✅️')
-    await conn.reply(m.chat, `> ⓘ \`Usuario promovido:\` *@${m.sender.split('@')[0]}*`, m, { mentions: [m.sender] })
+    
+    // El engranaje final de KarBot ⚙️
+    await m.react('⚙️')
+    
+    await conn.reply(m.chat, '> Ahora eres admin.', m)
 
   } catch (error) {
-    await m.react('❌️')
-    await conn.reply(m.chat, `> ⓘ \`Error al promover:\` *${error.message}*`, m)
+    await m.react('❌')
+    await conn.reply(m.chat, '> Lo siento, hubo un error.', m)
   }
 }
 

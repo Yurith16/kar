@@ -1,12 +1,20 @@
+import { checkReg } from '../lib/checkReg.js'
+
 let handler = async (m, { conn, usedPrefix, command, isAdmin, isROwner }) => {
+    const userId = m.sender
+    const user = global.db.data.users[userId]
+    
+    // Verificación de registro
+    if (await checkReg(m, user)) return
+    
     if (!m.isGroup) {
         await m.react('❌')
-        return m.reply('> ⓘ Este comando solo funciona en grupos.')
+        return m.reply('> Solo funciona en grupos.')
     }
 
     if (!isAdmin && !isROwner) {
         await m.react('🚫')
-        return m.reply('> ⓘ Solo los administradores pueden usar este comando.')
+        return m.reply('> Solo administradores.')
     }
 
     let chat = global.db.data.chats[m.chat]
@@ -14,87 +22,50 @@ let handler = async (m, { conn, usedPrefix, command, isAdmin, isROwner }) => {
     let action = args[0]?.toLowerCase()
 
     if (!action || (action !== 'on' && action !== 'off')) {
-        let status = chat.antiExtranjero ? '🟢 ACTIVADO' : '🔴 DESACTIVADO'
-        await m.react('ℹ️')
-        return m.reply(`╭─「 🛡️ *ANTI-EXTRANJERO* 🛡️ 」
-│ 
-│ 📊 Estado actual: ${status}
-│ 
-│ 💡 *Uso del comando:*
-│ ├ ${usedPrefix}antiextranjero on
-│ └ ${usedPrefix}antiextranjero off
-│ 
-│ 📝 *Descripción:*
-│ EXPULSA TODOS los números extranjeros
-│ Solo permite números locales
-│ 
-│ 🌍 *Cobertura completa:*
-│ ├ +40 países bloqueados
-│ ├ Todos los continentes
-│ └ Detección automática
-│ 
-│ 🔨 *Acciones:*
-│ ├ Expulsión automática al entrar
-│ ├ Bloqueo total de extranjeros
-│ └ Solo números locales permitidos
-╰─◉`.trim())
+        await m.react('🌿')
+        
+        let status = chat.antiExtranjero ? 'activado' : 'desactivado'
+        let mensaje = `> Anti extranjero ${status}\n\n`
+        mensaje += `> Uso: ${usedPrefix}antif [on/off]`
+        
+        return m.reply(mensaje)
     }
 
     if (action === 'on') {
         if (chat.antiExtranjero) {
             await m.react('ℹ️')
-            return m.reply('> ⓘ El *Anti-Extranjero* ya está activado.')
+            return m.reply('> Ya está activado.')
         }
+        
         chat.antiExtranjero = true
-        await m.react('✅')
-        m.reply(`╭─「 🛡️ *ANTI-EXTRANJERO ACTIVADO* 🛡️ 」
-│ 
-│ ✅ *Protección máxima activada:*
-│ ├ TODOS los números extranjeros bloqueados
-│ ├ +40 países detectados automáticamente
-│ ├ Usuarios EXPULSADOS al entrar
-│ └ Solo números locales permitidos
-│ 
-│ 🌍 *Países bloqueados:*
-│ ├ Medio Oriente completo
-│ ├ India y alrededores
-│ ├ África, Asia, Europa del Este
-│ ├ América Latina
-│ └ Y muchos más...
-│ 
-│ ⚠️ *Advertencia:*
-│ ├ Cualquier usuario extranjero
-│ └ será expulsado automáticamente
-│ 
-│ 🔒 *Grupo 100% local*
-╰─◉`.trim())
+        
+        // Reacción inicial
+        await m.react('🔧')
+        // El engranaje final de KarBot ⚙️
+        await m.react('⚙️')
+        
+        m.reply('> Anti extranjero activado')
 
     } else if (action === 'off') {
         if (!chat.antiExtranjero) {
             await m.react('ℹ️')
-            return m.reply('> ⓘ El *Anti-Extranjero* ya está desactivado.')
+            return m.reply('> Ya está desactivado.')
         }
+        
         chat.antiExtranjero = false
-        await m.react('✅')
-        m.reply(`╭─「 🛡️ *ANTI-EXTRANJERO DESACTIVADO* 🛡️ 」
-│ 
-│ ✅ *Protección desactivada:*
-│ ├ Números extranjeros permitidos
-│ ├ Sin expulsiones automáticas
-│ └ Restricciones removidas
-│ 
-│ 🌍 *Grupo abierto:*
-│ ├ Usuarios internacionales bienvenidos
-│ └ Sin filtros por país
-│ 
-│ 🔓 *Grupo abierto internacionalmente*
-╰─◉`.trim())
+        
+        // Reacción inicial
+        await m.react('🔧')
+        // El engranaje final de KarBot ⚙️
+        await m.react('⚙️')
+        
+        m.reply('> Anti extranjero desactivado')
     }
 }
 
-handler.help = ['antiextranjero on', 'antiextranjero off']
+handler.help = ['antif on/off (antiextr)']
 handler.tags = ['group']
-handler.command = /^(antiextranjero|antiforeign|antiextrange)$/i
+handler.command = /^(antiextranjero|antif|antiforeign)$/i
 handler.group = true
 handler.admin = true
 

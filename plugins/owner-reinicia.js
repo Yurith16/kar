@@ -2,7 +2,6 @@ import fs from 'fs'
 import path from 'path'
 import { exec } from 'child_process'
 import { fileURLToPath } from 'url'
-import fetch from 'node-fetch'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -51,7 +50,7 @@ let handler = async (m, { conn, usedPrefix, command, isOwner, isROwner }) => {
   saveRestartInfo(m.chat)
 
   // Emoji de espera
-  await m.react('🕑')
+  await m.react('🔄')
 
   let logs = []
   const pushLog = (title, data) => {
@@ -65,42 +64,34 @@ let handler = async (m, { conn, usedPrefix, command, isOwner, isROwner }) => {
   try {
     if (isGitRepo() && (await hasGit())) {
       const res = await run('git --no-pager pull --rebase --autostash')
-      pushLog('🎄 Actualización Git', res)
+      pushLog('📥 ACTUALIZACIÓN GIT', res)
     } else {
-      logs.push('> 🎄 Actualización Git: omitido (no es repo o no hay git)')
+      logs.push('> 📥 ACTUALIZACIÓN GIT: OMITIDO')
     }
   } catch (e) {
-    pushLog('🎄 Actualización Git (ERROR)', e)
+    pushLog('📥 ACTUALIZACIÓN GIT (ERROR)', e)
   }
 
   // 2) npm install
   try {
     const res = await run('npm install --no-audit --no-fund')
-    pushLog('📦 Instalación de Dependencias', res)
+    pushLog('📦 INSTALACIÓN DEPENDENCIAS', res)
   } catch (e) {
-    pushLog('📦 Instalación de Dependencias (ERROR)', e)
+    pushLog('📦 INSTALACIÓN DEPENDENCIAS (ERROR)', e)
   }
 
   // Emoji de éxito antes de reiniciar
   await m.react('✅')
 
-  // Resumen navideño al chat
+  // Mensaje de reinicio
   try {
     await conn.reply(
       m.chat,
-      `> 🤖 *BOT EN LÍNEANUEVAMENTE SISTEM ONLINE 🍃*
-
-> 🌐 *Estado del servidor:* Conectado
-> ⚡ *Servicios:* Activos
-> 🎯 *Funciones:* Operativas
-> ⚙️ ${logs.join('\n\n')}
-> 📊 *Información del sistema:*
-> 🕑 Tiempo de reconexión: ${Date.now() - info.timestamp}ms
-> 🔰 Estado: ✅ Conectado al servidor
-> 💾 Servicios: 🟢 Todos operativos
-
-> 🎅 *¡Itsuki V3 está listo para ayudarte de nuevo!*
-> 🎄 *¡Feliz Navidad!* 🎁`.slice(0, 3500),
+      `*⚙️ 𝙺𝙰𝚁𝙱𝙾𝚃 ⚙️*\n\n` +
+      `> 🔄 𝚁𝙴𝙸𝙽𝙸𝙲𝙸𝙰𝙽𝙳𝙾 𝚂𝙸𝚂𝚃𝙴𝙼𝙰\n\n` +
+      `${logs.join('\n\n')}\n\n` +
+      `> ⚡ 𝙿𝚁𝙾𝙲𝙴𝚂𝙾 𝙲𝙾𝙼𝙿𝙻𝙴𝚃𝙰𝙳𝙾\n` +
+      `> 🔧 𝚁𝙴𝙲𝙾𝙽𝙴𝙲𝚃𝙰𝙽𝙳𝙾...`,
       m
     )
   } catch {}
@@ -123,14 +114,14 @@ export async function sendReconnectionMessage(conn) {
       fs.unlinkSync(restartFile)
 
     } catch (error) {
-      console.error('❌ Error leyendo información de reinicio:', error)
+      console.error('❌ ERROR REINICIO:', error)
     }
   }
 }
 
 handler.help = ['reiniciar', 'restart']
 handler.tags = ['owner']
-handler.command = /^(fix|reiniciar)$/i
+handler.command = /^(fix|reiniciar|restart)$/i
 handler.rowner = true
 
 export default handler

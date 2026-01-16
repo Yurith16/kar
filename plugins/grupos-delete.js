@@ -1,6 +1,13 @@
+import { checkReg } from '../lib/checkReg.js'
+
 let handler = async (m, { conn, isGroup }) => {
-  if (!m.quoted)
-    return conn.reply(m.chat, '> Cita el mensaje que deseas eliminar.', m)
+  const userId = m.sender
+  const user = global.db.data.users[userId]
+  
+  // Verificación de registro
+  if (await checkReg(m, user)) return
+
+  if (!m.quoted) return
 
   try {
     const botJid = conn.decodeJid(conn.user.id)
@@ -11,8 +18,10 @@ let handler = async (m, { conn, isGroup }) => {
     const stanzaId = quoted.id
     const participant = quoted.participant || quotedJid
 
-    if (!stanzaId || !participant)
-      return conn.reply(m.chat, '✧ No pude identificar el mensaje a eliminar.', m)
+    if (!stanzaId || !participant) return
+
+    // Reacción de procesamiento
+    await m.react('🔧')
 
     if (quotedJid === botJid) {
       // Eliminar mensaje propio
@@ -28,11 +37,15 @@ let handler = async (m, { conn, isGroup }) => {
         const { participants } = await conn.groupMetadata(m.chat)
         const isAdmin = jid => participants.some(p => p.id === jid && /admin|superadmin/i.test(p.admin || ''))
 
-        if (!isAdmin(senderJid))
-          return conn.reply(m.chat, '${emoji} Solo los administradores pueden borrar mensajes de otros usuarios.', m)
+        if (!isAdmin(senderJid)) {
+          await m.react('🚫')
+          return
+        }
 
-        if (!isAdmin(botJid))
-          return conn.reply(m.chat, '${emoji} Necesito ser administrador para borrar mensajes de otros usuarios.', m)
+        if (!isAdmin(botJid)) {
+          await m.react('❌')
+          return
+        }
       }
       await conn.sendMessage(m.chat, {
         delete: {
@@ -43,9 +56,12 @@ let handler = async (m, { conn, isGroup }) => {
         }
       })
     }
+
+    // El engranaje final de KarBot ⚙️
+    await m.react('⚙️')
+
   } catch (err) {
-    console.error('[${emoji} ERROR delete]', err)
-    conn.reply(m.chat, '${emoji} No se pudo eliminar el mensaje. WhatsApp podría estar limitando esta acción.', m)
+    await m.react('❌')
   }
 }
 
@@ -54,5 +70,6 @@ handler.tags = ['group']
 handler.command = ['del', 'delete']
 handler.botAdmin = true
 handler.admin = true
+handler.group = true
 
 export default handler

@@ -175,28 +175,50 @@ m = smsg(this, m) || m
 if (!m) return
 m.exp = 0
 try {
-let user = global.db.data.users[m.sender]
-if (typeof user !== "object") global.db.data.users[m.sender] = {}
-if (user) {
-if (!("name" in user)) user.name = m.name
-if (!("exp" in user) || !isNumber(user.exp)) user.exp = 0
-if (!("coin" in user) || !isNumber(user.coin)) user.coin = 0
-if (!("bank" in user) || !isNumber(user.bank)) user.bank = 0
-if (!("level" in user) || !isNumber(user.level)) user.level = 0
-if (!("health" in user) || !isNumber(user.health)) user.health = 100
-if (!("genre" in user)) user.genre = ""
-if (!("birth" in user)) user.birth = ""
-if (!("marry" in user)) user.marry = ""
-if (!("description" in user)) user.description = ""
-if (!("packstickers" in user)) user.packstickers = null
-if (!("premium" in user)) user.premium = false
-if (!("premiumTime" in user)) user.premiumTime = 0
-if (!("banned" in user)) user.banned = false
-if (!("bannedReason" in user)) user.bannedReason = ""
-if (!("commands" in user) || !isNumber(user.commands)) user.commands = 0
-if (!("afk" in user) || !isNumber(user.afk)) user.afk = -1
-if (!("afkReason" in user)) user.afkReason = ""
-if (!("warn" in user) || !isNumber(user.warn)) user.warn = 0
+  let user = global.db.data.users[m.sender]
+  if (typeof user !== "object") global.db.data.users[m.sender] = {}
+  if (user) {
+    // MODIFICACIÓN AQUÍ: Solo asigna nombre si el usuario NO tiene uno ya (evita sobreescribir el registro)
+    if (!user.name) user.name = m.pushName || m.name || 'Usuario'
+
+    if (!("exp" in user) || !isNumber(user.exp)) user.exp = 0
+    if (!("coin" in user) || !isNumber(user.coin)) user.coin = 0
+    if (!("bank" in user) || !isNumber(user.bank)) user.bank = 0
+    if (!("level" in user) || !isNumber(user.level)) user.level = 0
+    if (!("health" in user) || !isNumber(user.health)) user.health = 100
+    if (!("genre" in user)) user.genre = ""
+    if (!("registered" in user)) user.registered = false // IMPORTANTE: Asegúrate de que esta línea exista
+    if (!("sn" in user)) user.sn = "" // IMPORTANTE: Asegúrate de que esta línea exista
+    if (!("birth" in user)) user.birth = ""
+    if (!("marry" in user)) user.marry = ""
+    if (!("description" in user)) user.description = ""
+    if (!("packstickers" in user)) user.packstickers = null
+    if (!("premium" in user)) user.premium = false
+    if (!("premiumTime" in user)) user.premiumTime = 0
+    if (!("banned" in user)) user.banned = false
+    if (!("bannedReason" in user)) user.bannedReason = ""
+    if (!("commands" in user) || !isNumber(user.commands)) user.commands = 0
+    if (!("afk" in user) || !isNumber(user.afk)) user.afk = -1
+    if (!("afkReason" in user)) user.afkReason = ""
+    if (!("warn" in user) || !isNumber(user.warn)) user.warn = 0
+    if (!("prefStyle" in user)) user.prefStyle = "default"
+// -------------------------------------------------------------------
+        // INICIO SISTEMA DE EXPIRACIÓN AUTOMÁTICA KARBOT
+        // -------------------------------------------------------------------
+        if (user.premium && user.premiumTime > 0 && Date.now() > user.premiumTime) {
+            user.premium = false
+            user.premiumTime = 0
+
+            let txt = `> ⚠️ *𝙽𝙾𝚃𝙸𝙵𝙸𝙲𝙰𝙲𝙸𝙾́𝙽 𝙳𝙴 𝙴𝚇𝙿𝙸𝚁𝙰𝙲𝙸𝙾́𝙽*\n\n`
+            txt += `Hola *${user.name || 'usuario'}*, tu suscripción 💎 *Premium* ha terminado.\n\n`
+            txt += `❌ Se han desactivado las descargas sin costo y tu perfil personalizado.\n\n`
+            txt += `💡 _¡Vuelve a la tienda con .buypremium para renovar tu estatus!_`
+
+            // Enviamos al privado del usuario que escribe
+            this.sendMessage(m.sender, { text: txt }, { quoted: m })
+        }
+        // -------------------------------------------------------------------
+
 } else global.db.data.users[m.sender] = {
 name: m.name,
 exp: 0,
@@ -276,12 +298,12 @@ console.error(e)
 }
 if (typeof m.text !== "string") m.text = ""
 const user = global.db.data.users[m.sender]
-try {
+/*try {
 const actual = user.name || ""
 const nuevo = m.pushName || await this.getName(m.sender)
 if (typeof nuevo === "string" && nuevo.trim() && nuevo !== actual) {
 user.name = nuevo
-}} catch {}
+}} catch {}*/
 const chat = global.db.data.chats[m.chat]
 const settings = global.db.data.settings[this.user.jid]  
 const isROwner = [...global.owner.map(([number]) => number)].map(v => v.replace(/[^0-9]/g, "") + "@s.whatsapp.net").includes(m.sender)
@@ -351,26 +373,7 @@ try {
                     await this.groupParticipantsUpdate(m.chat, [sender], 'remove')
 
                     await this.sendMessage(m.chat, { 
-                        text: `╭─「 🚫 *ANTI-ARABE ACTIVADO* 🚫 」
-│ 
-│ *ⓘ Usuario árabe detectado y expulsado*
-│ 
-│ 📋 *Información:*
-│ ├ Usuario: *Arabe*
-│ ├ País: Número árabe detectado
-│ ├ Razón: Anti-Arabe activado
-│ ├ Acción: Expulsado del grupo
-│ └ Mensaje: Eliminado
-│ 
-│ 🌍 *Países bloqueados:*
-│ ├ Arabia Saudita, Emiratos, Qatar
-│ ├ Kuwait, Bahréin, Omán, Egipto
-│ ├ Jordania, Siria, Irak, Yemen
-│ ├ Palestina, Líbano y +10 más
-│ 
-│ 💡 *Para desactivar:*
-│ └ Use el comando .antiarabe off
-╰─◉`.trim(),
+                        text: `Usuario no permitido expulsado con exito`.trim(),
                         mentions: [sender]
                     })
                     return
@@ -387,23 +390,7 @@ try {
                     await this.groupParticipantsUpdate(m.chat, [sender], 'remove')
 
                     await this.sendMessage(m.chat, {
-                        text: `╭─「 🚫 *ANTI-EXTRANJERO ACTIVADO* 🚫 」
-│ 
-│ *ⓘ Usuario extranjero detectado y expulsado*
-│ 
-│ 📋 *Información:*
-│ ├ Usuario: Extranjero
-│ ├ País: ${countryName}
-│ ├ Razón: Anti-Extranjero activado
-│ ├ Acción: Expulsado del grupo
-│ 
-│ 🌍 *Configuración actual:*
-│ ├ Solo usuarios locales permitidos
-│ ├ Países bloqueados: Todos excepto local
-│ 
-│ 💡 *Para desactivar:*
-│ └ Use el comando .antiextranjero off
-╰─◉`.trim(),
+                        text: `*Usuario extranjero expulsado con éxito*`.trim(),
                         mentions: [sender]
                     })
                     return
@@ -416,22 +403,7 @@ try {
                     await this.groupParticipantsUpdate(m.chat, [sender], 'remove')
 
                     await this.sendMessage(m.chat, {
-                        text: `╭─「 🚫 *PAÍS BLOQUEADO* 🚫 」
-│ 
-│ *ⓘ Usuario de país bloqueado detectado*
-│ 
-│ 📋 *Información:*
-│ ├ Usuario: ${userCountry}
-│ ├ País: ${countryName}
-│ ├ Razón: País en lista de bloqueados
-│ ├ Acción: Expulsado del grupo
-│ 
-│ 📋 *Lista de países bloqueados:*
-│ ${chat.paisesBloqueados.map(p => `├ ${getCountryName(p)}`).join('\n')}
-│ 
-│ 💡 *Para modificar:*
-│ └ Use .bloquepais add/remove/list
-╰─◉`.trim(),
+                        text: `usuario prohibido expulsado`.trim(),
                         mentions: [sender]
                     })
                     return

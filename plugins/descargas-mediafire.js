@@ -1,91 +1,111 @@
-import fetch from 'node-fetch'
-import util from 'util'
-import axios from 'axios'
-import cheerio from 'cheerio'
+import axios from "axios";
+import cheerio from "cheerio";
+import { lookup } from "mime-types";
+import { checkReg } from '../lib/checkReg.js';
 
-async function mediafire(url){
-return new Promise(async(resolve, reject) => {
+function getSizeInMB(sizeText) {
     try {
-        const { data, status } = await axios.get(url)
-        const $ = cheerio.load(data);
+        if (!sizeText || sizeText === 'N/A') return 0;
+        sizeText = sizeText.toLowerCase().trim();
+        const match = sizeText.match(/([\d.]+)\s*(bytes|kb|mb|gb|tb)/i);
+        if (!match) return 0;
+        const number = parseFloat(match[1]);
+        const unit = match[2].toLowerCase();
+        switch(unit) {
+            case 'bytes': return number / (1024 * 1024);
+            case 'kb': return number / 1024;
+            case 'mb': return number;
+            case 'gb': return number * 1024;
+            case 'tb': return number * 1024 * 1024;
+            default: return 0;
+        }
+    } catch (error) { return 0; }
+}
 
-        let filename = $('.dl-info > div > div.filename').text();
-        let filetype = $('.dl-info > div > div.filetype').text();
-        let filesize = $('a#downloadButton').text().split("(")[1].split(")")[0];
-        let uploadAt = $('ul.details > li:nth-child(2)').text().split(": ")[1];
-        let link = $('#downloadButton').attr('href');
-        let desc = $('div.description > p.description-subheading').text();
+const activeDownloads = new Map();
 
-        if (typeof link === undefined) 
-            return resolve({ status: false, msg: 'No se encontraron resultados.' })
+async function mediafireDl(url) {
+    try {
+        if (!url.includes("mediafire.com")) throw new Error("URL no válida");
+        let res = await axios.get(url, {
+            headers: { "User-Agent": "Mozilla/5.0" },
+            timeout: 30000,
+        });
+        let $ = cheerio.load(res.data);
+        let link = $("#downloadButton").attr("href");
+        if (!link || link.includes("javascript:void(0)")) {
+            const linkMatch = res.data.match(/href="(https:\/\/download\d+\.mediafire\.com[^"]+)"/);
+            link = linkMatch ? linkMatch[1] : null;
+        }
+        if (!link) throw new Error("No se encontró el enlace");
 
-        let result = {
-            status: true,
-            filename: filename,
-            filetype: filetype,
-            filesize: filesize,
-            uploadAt: uploadAt,
-            link: link,
-            desc: desc
+        const name = $(".filename").text().trim() || "archivo";
+        const size = $("#downloadButton").text().replace("Download", "").replace(/[()]/g, "").trim() || "N/A";
+        const ext = name.split(".").pop()?.toLowerCase();
+        const mime = lookup(ext) || "application/octet-stream";
+
+        return { name, size, mime, link };
+    } catch (error) { throw new Error(error.message); }
+}
+
+let handler = async (m, { conn, args }) => {
+    const userId = m.sender;
+    const user = global.db.data.users[userId];
+    const text = args.join(" ").trim();
+
+    if (await checkReg(m, user)) return;
+
+    if (activeDownloads.has(userId)) return conn.reply(m.chat, `> Un momento, ya estoy procesando una descarga para usted.`, m);
+    if (!text) return conn.reply(m.chat, `> Debe proporcionar un enlace de Mediafire.`, m);
+
+    activeDownloads.set(userId, true);
+    
+    try {
+        // Secuencia botánica de KarBot para dar vida al proceso 🌿
+        const reacciones = ['🔍', '🌿', '🍀', '📥'];
+        for (const reacc of reacciones) {
+            await m.react(reacc);
         }
 
-        console.log(result)
-        resolve(result)
+        const fileInfo = await mediafireDl(text);
+        const { name: fileName, size, mime, link } = fileInfo;
+        const sizeMB = getSizeInMB(size);
 
-    } catch (err) {
-        console.error(err)
-        resolve({ status: false, msg: 'No se encontraron resultados.' })
+        // Restricción de peso (500 MB)
+        if (sizeMB > 500) {
+            await m.react("❌");
+            return conn.reply(m.chat, `> El archivo supera el límite de 500 MB permitido.`, m);
+        }
+
+        // Descarga del buffer
+        const response = await axios({ method: "GET", url: link, responseType: "arraybuffer", timeout: 250000 });
+        const fileBuffer = Buffer.from(response.data);
+
+        // Caption final solicitado por ti
+        const fileDetails = `> Su descarga fue exitosa`;
+
+        await conn.sendMessage(m.chat, { 
+            document: fileBuffer, 
+            mimetype: mime, 
+            fileName: fileName, 
+            caption: fileDetails 
+        }, { quoted: m });
+        
+        // El engranaje final de KarBot ⚙️
+        await m.react("⚙️");
+
+    } catch (error) {
+        console.error(error);
+        await m.react("❌");
+        return conn.reply(m.chat, `> Lo siento, no pude descargar el archivo`, m);
+    } finally {
+        activeDownloads.delete(userId);
     }
-})
-}
+};
 
-let handler = async (m, { usedPrefix, command, conn, text }) => {
-
-    let input = `[❗] *Formato incorrecto*
-
-Ejemplo:
-${usedPrefix + command} https://www.mediafire.com/file/pwxob70rpgma9lz/ejemplo.apk/file
-*`
-
-    if (!text) return m.reply(input)
-
-    if (!(text.includes('http://') || text.includes('https://'))) 
-        return m.reply(`❌ URL no válida. Asegúrate de incluir http:// o https://`)
-
-    if (!text.includes('mediafire.com')) 
-        throw '❌ El enlace no pertenece a MediaFire.'
-
-    m.reply(wait)
-
-    const baby1 = await mediafire(text)
-
-    if (baby1.filesize.split('MB')[0] >= 100) 
-        return m.reply('*⚠️ Archivo excede el límite permitido.*\n' + util.format(baby1))
-
-    await conn.delay(500)
-
-    const result = `*📥 MEDIAFIRE DOWNLOADER*
-
-> 📄 *Nombre:* ${baby1.filename}
-> ⚖️ *Tamaño:* ${baby1.filesize}
-> 📨 *Tipo:* ${baby1.filetype}
-> 🔗 *Enlace:* ${baby1.link}
-> 📅 *Subido el:* ${baby1.uploadAt}
-`
-
-    conn.sendFile(
-        m.chat, 
-        baby1.link || emror, 
-        `${baby1.filename}`, 
-        result, 
-        m, 
-        null, 
-        { mimetype: `${baby1.filetype}`, asDocument: true }
-    )
-}
-
-handler.help = ['mediafire <link>']
+handler.help = ['mediafire']
 handler.tags = ['downloader']
-handler.command = ['detectar']
+handler.command = ["mediafire", "mf"];
+handler.group = true;
 
-export default handler
+export default handler;

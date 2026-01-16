@@ -3,6 +3,8 @@ import fs from 'fs'
 import { fileURLToPath, pathToFileURL } from 'url'
 import fetch from 'node-fetch'
 
+// ... (Las funciones auxiliares: makeFkontak, toNum, localPart, normalizeCore, formatPretty, resolveName, appendOwnerToConfig, parseUserTargets, normalizeJid, getUserInfo permanecen AQUÍ INTACTAS)
+
 async function makeFkontak() {
   try {
     const res = await fetch('https://i.postimg.cc/rFfVL8Ps/image.jpg')
@@ -81,66 +83,66 @@ async function appendOwnerToConfig(configPath, number, name, isRoot = false) {
 
 function parseUserTargets(input, options = {}) {
     try {
-        if (!input || input.trim() === '') return [];
+      if (!input || input.trim() === '') return [];
 
-        const defaults = {
-            allowLids: true,
-            resolveMentions: true,
-            groupJid: null,
-            maxTargets: 50
-        };
-        const opts = { ...defaults, ...options };
+      const defaults = {
+          allowLids: true,
+          resolveMentions: true,
+          groupJid: null,
+          maxTargets: 50
+      };
+      const opts = { ...defaults, ...options };
 
-        if (Array.isArray(input)) {
-            return input.map(jid => normalizeJid(jid)).filter(jid => jid);
-        }
+      if (Array.isArray(input)) {
+          return input.map(jid => normalizeJid(jid)).filter(jid => jid);
+      }
 
-        if (typeof input === 'string') {
-            let targets = [];
-            const textTargets = input.split(/[,;\s\n]+/).map(item => item.trim()).filter(item => item);
+      if (typeof input === 'string') {
+          let targets = [];
+          const textTargets = input.split(/[,;\s\n]+/).map(item => item.trim()).filter(item => item);
 
-            for (let item of textTargets) {
-                if (item.startsWith('@')) {
-                    const num = item.substring(1);
-                    if (num) {
-                        const jid = `${num}@s.whatsapp.net`;
-                        targets.push(jid);
-                    }
-                    continue;
-                }
+          for (let item of textTargets) {
+              if (item.startsWith('@')) {
+                  const num = item.substring(1);
+                  if (num) {
+                      const jid = `${num}@s.whatsapp.net`;
+                      targets.push(jid);
+                  }
+                  continue;
+              }
 
-                if (/^[\d+][\d\s\-()]+$/.test(item)) {
-                    const cleanNum = item.replace(/[^\d+]/g, '');
-                    if (cleanNum.length >= 8) {
-                        const jid = `${cleanNum.replace(/^\+/, '')}@s.whatsapp.net`;
-                        targets.push(jid);
-                    }
-                    continue;
-                }
+              if (/^[\d+][\d\s\-()]+$/.test(item)) {
+                  const cleanNum = item.replace(/[^\d+]/g, '');
+                  if (cleanNum.length >= 8) {
+                      const jid = `${cleanNum.replace(/^\+/, '')}@s.whatsapp.net`;
+                      targets.push(jid);
+                  }
+                  continue;
+              }
 
-                if (item.includes('@')) {
-                    targets.push(normalizeJid(item));
-                    continue;
-                }
+              if (item.includes('@')) {
+                  targets.push(normalizeJid(item));
+                  continue;
+              }
 
-                if (/^\d+$/.test(item) && item.length >= 8) {
-                    targets.push(`${item}@s.whatsapp.net`);
-                }
-            }
+              if (/^\d+$/.test(item) && item.length >= 8) {
+                  targets.push(`${item}@s.whatsapp.net`);
+              }
+          }
 
-            targets = [...new Set(targets.map(jid => normalizeJid(jid)).filter(jid => jid))];
+          targets = [...new Set(targets.map(jid => normalizeJid(jid)).filter(jid => jid))];
 
-            if (opts.maxTargets && targets.length > opts.maxTargets) {
-                targets = targets.slice(0, opts.maxTargets);
-            }
+          if (opts.maxTargets && targets.length > opts.maxTargets) {
+              targets = targets.slice(0, opts.maxTargets);
+          }
 
-            return targets;
-        }
+          return targets;
+      }
 
-        return [];
+      return [];
     } catch (error) {
-        console.error('Error en parseUserTargets:', error);
-        return [];
+      console.error('Error en parseUserTargets:', error);
+      return [];
     }
 }
 
@@ -185,10 +187,25 @@ async function getUserInfo(jid, participants = [], conn) {
     }
 }
 
+
+// --- INICIO DEL HANDLER MODIFICADO ---
 const handler = async (m, { conn, text, participants }) => {
   try {
+    // 1. Reacción de Owner al iniciar el comando
+    await conn.sendMessage(m.chat, { react: { text: '👤', key: m.key } });
+
     if (!text?.trim() && !m.mentionedJid?.length && !m.quoted) {
-      return conn.reply(m.chat, `> ⓘ \`Uso:\` *addowner @usuario*\n> ⓘ \`Uso:\` *addowner número*\n> ⓘ \`O responde a un mensaje*`, m)
+      // Mensaje de uso (Diseño limpio)
+      const usageMessage = 
+`╭━━〔 👑 𝐀𝐃𝐃-𝐎𝐖𝐍𝐄𝐑 〕━━╮
+║
+║ ⓘ *Uso Correcto:*
+║ ▸ addowner @usuario
+║ ▸ addowner número
+║ ▸ *Responde* al mensaje de un usuario
+║
+╰━━━━━━━━━━━━━━━━━━━━╯`;
+      return conn.reply(m.chat, usageMessage, m)
     }
 
     const targetsAll = parseUserTargets(text || '', {
@@ -211,18 +228,32 @@ const handler = async (m, { conn, text, participants }) => {
         }
     }
 
-    if (!targetsAll.length) return conn.reply(m.chat, '> ⓘ \`No se encontró usuario válido\`', m)
+    if (!targetsAll.length) {
+      // Reacción de error y mensaje limpio
+      await conn.sendMessage(m.chat, { react: { text: '❌', key: m.key } });
+      return conn.reply(m.chat, '╭━━〔 ❌ 𝐄𝐑𝐑𝐎𝐑 〕━━╮\n║\n║ ▸ No se encontró un usuario válido.\n║\n╰━━━━━━━━━━━━━━━━━━━━╯', m)
+    }
+    
     const target = targetsAll[0]
 
     const info = await getUserInfo(target, participants, conn)
     const num = normalizeCore(info.jid)
-    if (!num) return conn.reply(m.chat, '> ⓘ \`Número inválido\`', m)
+    if (!num) {
+      await conn.sendMessage(m.chat, { react: { text: '❌', key: m.key } });
+      return conn.reply(m.chat, '╭━━〔 ❌ 𝐄𝐑𝐑𝐎𝐑 〕━━╮\n║\n║ ▸ Número inválido o no reconocido.\n║\n╰━━━━━━━━━━━━━━━━━━━━╯', m)
+    }
 
     const already = (Array.isArray(global.owner) ? global.owner : []).some(v => {
       if (Array.isArray(v)) return normalizeCore(v[0]) === num
       return normalizeCore(v) === num
     })
-    if (already) return conn.reply(m.chat, `> ⓘ \`Ya es owner:\` *@${num}*`, m, { mentions: [info.jid] })
+    
+    if (already) {
+      // Reacción de error y mensaje limpio
+      await conn.sendMessage(m.chat, { react: { text: '⚠️', key: m.key } });
+      const alreadyMessage = `╭━━〔 ⚠️ 𝐀𝐃𝐕𝐄𝐑𝐓𝐄𝐍𝐂𝐈𝐀 〕━━╮\n║\n║ ▸ *@${num}* ya es Owner del bot.\n║\n╰━━━━━━━━━━━━━━━━━━━━╯`;
+      return conn.reply(m.chat, alreadyMessage, m, { mentions: [info.jid] })
+    }
 
     let providedName = ''
     if (text?.trim()) {
@@ -247,17 +278,47 @@ const handler = async (m, { conn, text, participants }) => {
 
     const fkontak = await makeFkontak().catch(() => null)
     
+    // 2. Mensaje de éxito (Diseño limpio)
+    let successMessage
+    
     if (persisted) {
-      return conn.reply(m.chat, `> ⓘ \`Owner agregado:\` *@${num}*\n> ⓘ \`Nombre:\` *${name}*`, fkontak || m, { mentions: [info.jid] })
+      successMessage = 
+`╭━━〔 ✅ 𝐎𝐖𝐍𝐄𝐑 𝐀𝐆𝐑𝐄𝐆𝐀𝐃𝐎 〕━━╮
+║
+║ ▸ Estado: *Permanente* (config.js)
+║ 👑 Usuario: *@${num}*
+║ 📝 Nombre: *${name}*
+║
+╰━━━━━━━━━━━━━━━━━━━━╯`;
     } else {
-      return conn.reply(m.chat, `> ⓘ \`Owner agregado en memoria:\` *@${num}*\n> ⓘ \`Nombre:\` *${name}*\n> ⓘ \`No se pudo guardar en config.js\``, fkontak || m, { mentions: [info.jid] })
+      successMessage = 
+`╭━━〔 ❗ 𝐀𝐆𝐑𝐄𝐆𝐀𝐃𝐎 𝐄𝐍 𝐌𝐄𝐌𝐎𝐑𝐈𝐀 〕━━╮
+║
+║ ▸ Estado: *Temporal* (No se guardó en config.js)
+║ 👑 Usuario: *@${num}*
+║ 📝 Nombre: *${name}*
+║
+╰━━━━━━━━━━━━━━━━━━━━╯`;
     }
+    
+    await conn.sendMessage(m.chat, { react: { text: '✅', key: m.key } });
+    return conn.reply(m.chat, successMessage, fkontak || m, { mentions: [info.jid] })
     
   } catch (e) {
     console.error('[owner-add] error:', e)
-    return conn.reply(m.chat, `> ⓘ \`Error:\` *${e.message}*`, m)
+    // 3. Mensaje de error general (Diseño limpio)
+    await conn.sendMessage(m.chat, { react: { text: '❌', key: m.key } });
+    const errorMessage = 
+`╭━━〔 ❌ 𝐄𝐑𝐑𝐎𝐑 𝐃𝐄 𝐒𝐈𝐒𝐓𝐄𝐌𝐀 〕━━╮
+║
+║ ▸ Falló la operación addowner.
+║ ▸ *Detalles:* ${e.message.split('\n')[0]}
+║
+╰━━━━━━━━━━━━━━━━━━━━╯`;
+    return conn.reply(m.chat, errorMessage, m)
   }
 }
+// --- FIN DEL HANDLER MODIFICADO ---
 
 handler.help = ['addowner']
 handler.tags = ['owner']

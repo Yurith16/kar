@@ -3,120 +3,60 @@ import fetch from 'node-fetch'
 let handler = async (m, { conn, usedPrefix, command, text }) => {
   const ctxErr = (global.rcanalx || {})
   const ctxWarn = (global.rcanalw || {})
-  const ctxOk = (global.rcanalr || {})
 
   if (!text) {
+    await m.react('📝')
     return conn.reply(m.chat,
-`╭━━━〔 🎴 𝐁𝐔𝐒𝐂𝐀𝐃𝐎𝐑 𝐃𝐄 𝐌𝐀𝐍𝐆𝐀 🎴 〕━━━⬣
-│ 🔍 *Falta el nombre del manga*
-│ 
-│ 📋 *Uso del comando:*
-│ ${usedPrefix + command} <nombre_manga>
-│ 
-│ 🎯 *Ejemplo:*
-│ ${usedPrefix + command} One Piece
-╰━━━━━━━━━━━━━━━━━━━━━━⬣
-
-💮 *Itsuki espera tu búsqueda...* 📚`, 
-    m, ctxWarn)
+`> Debe incluir el nombre del anime o manga
+*Uso:* ${usedPrefix + command} <Dragon Ball Z>`, m, ctxWarn)
   }
 
-  // Emoji de reacción de búsqueda
-  await m.react('🕑')
+  await m.react('🔍')
 
   try {
-    let res = await fetch('https://api.jikan.moe/v4/manga?q=' + text)
-
-    if (!res.ok) {
-      await m.react('❌')
-      return conn.reply(m.chat,
-`╭━━━〔 💎 𝐄𝐑𝐑𝐎𝐑 💎 〕━━━⬣
-│ ❌ *Servidor no disponible*
-│ 
-│ 📡 Error en conexión API
-│ 🕒 Intenta nuevamente más tarde
-╰━━━━━━━━━━━━━━━━━━━━━━⬣
-
-💮 *Itsuki lamenta el inconveniente...* (´；ω；\`)`, 
-      m, ctxErr)
-    }
+    let res = await fetch('https://api.jikan.moe/v4/manga?q=' + encodeURIComponent(text))
+    if (!res.ok) throw new Error()
 
     let json = await res.json()
-
     if (!json.data || json.data.length === 0) {
-      await m.react('❌')
-      return conn.reply(m.chat,
-`╭━━━〔 🎴 𝐒𝐈𝐍 𝐑𝐄𝐒𝐔𝐋𝐓𝐀𝐃𝐎𝐒 🎴 〕━━━⬣
-│ 🔍 *Manga no encontrado*
-│ 
-│ 🎯 Término: ${text}
-│ 📚 No se encontró en base de datos
-╰━━━━━━━━━━━━━━━━━━━━━━⬣
-
-💮 *Itsuki sugiere verificar el nombre...* 📖`, 
-      m, ctxErr)
+      await m.react('💔')
+      return conn.reply(m.chat, `> No encontré resultados para: ${text}`, m, ctxErr)
     }
 
     let manga = json.data[0]
-    let { chapters, title_japanese, url, type, score, members, status, volumes, synopsis, favorites, published, genres, authors } = manga
+    let { chapters, title_japanese, url, type, score, status, volumes, synopsis, published, genres, authors } = manga
 
-    let author = authors?.[0]?.name || 'Desconocido'
-    let title_english = manga.title_english || manga.title
-    let title = manga.title
-    let genreList = genres?.map(g => g.name).join(', ') || 'No especificado'
+    let mangainfo = `*📖 INFORMACIÓN DE MANGA*
 
-    let mangainfo = 
-`╭━━━〔 💎 𝐈𝐍𝐅𝐎𝐑𝐌𝐀𝐂𝐈Ó𝐍 𝐃𝐄𝐋 𝐌𝐀𝐍𝐆𝐀 💎 〕━━━⬣
-│ 🎴 *Título Japonés:* ${title_japanese}
-│ 🏷️ *Título Inglés:* ${title_english}
-│ 📖 *Título Principal:* ${title}
-│ 
-│ 📊 *Capítulos:* ${chapters || 'En publicación'}
-│ 🎞️ *Tipo:* ${type}
-│ 🗂️ *Estado:* ${status}
-│ 📚 *Volúmenes:* ${volumes || 'En publicación'}
-│ 
-│ ⭐ *Favoritos:* ${favorites?.toLocaleString() || '0'}
-│ 🎯 *Puntaje:* ${score || 'N/A'}
-│ 👥 *Miembros:* ${members?.toLocaleString() || '0'}
-│ 🎭 *Géneros:* ${genreList}
-│ 
-│ 👨‍🔬 *Autor:* ${author}
-│ 📅 *Publicación:* ${published?.string || 'N/A'}
-│ 
-│ 🔗 *URL:* ${url}
-╰━━━━━━━━━━━━━━━━━━━━━━⬣
+*• Título:* ${manga.title}
+*• Japonés:* ${title_japanese}
+*• Autor:* ${authors?.[0]?.name || 'Desconocido'}
+*• Tipo:* ${type}
+*• Estado:* ${status}
+*• Capítulos:* ${chapters || 'En emisión'}
+*• Volúmenes:* ${volumes || 'En emisión'}
+*• Puntaje:* ${score || 'N/A'}
+*• Géneros:* ${genres?.map(g => g.name).join(', ') || 'N/A'}
+*• Publicado:* ${published?.string || 'N/A'}
 
-📝 *Sinopsis:*
-${synopsis ? synopsis.substring(0, 400) + (synopsis.length > 400 ? '...' : '') : 'Sinopsis no disponible'}
+> ${synopsis ? synopsis.substring(0, 350).replace(/\n/g, ' ') + '...' : 'Sin descripción disponible.'}
 
-🎀 *Itsuki te presenta información detallada del manga* 🌟`
+*Enlace:* ${url}
 
-    // Enviar imagen con información
+*Espero que esta información te sea de gran ayuda.* ✨`
+
+    await m.react('✅')
     await conn.sendFile(m.chat, manga.images.jpg.image_url, 'manga.jpg', mangainfo, m)
 
-    // Emoji de reacción de éxito
-    await m.react('✅')
-
   } catch (error) {
-    console.error(error)
     await m.react('❌')
-
-    await conn.reply(m.chat,
-`╭━━━〔 💎 𝐄𝐑𝐑𝐎𝐑 𝐂𝐑𝐈𝐓𝐈𝐂𝐎 💎 〕━━━⬣
-│ ❌ *Error en la búsqueda*
-│ 
-│ 📝 Detalles: ${error.message}
-╰━━━━━━━━━━━━━━━━━━━━━━⬣
-
-💮 *Itsuki no pudo completar la búsqueda...* (´；ω；\`)`, 
-    m, ctxErr)
+    await conn.reply(m.chat, `> Ocurrió un error inesperado al buscar: ${text}`, m, ctxErr)
   }
 }
 
 handler.help = ['infomanga'] 
 handler.tags = ['anime'] 
-handler.group = true;
-handler.command = ['infoanime'] 
+handler.group = true
+handler.command = ['infomanga', 'manga'] 
 
 export default handler

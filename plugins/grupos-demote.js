@@ -1,60 +1,59 @@
-const handler = async (m, { conn, text, participants, isAdmin, isBotAdmin }) => {
+import { checkReg } from '../lib/checkReg.js'
+
+const handler = async (m, { conn, participants, isAdmin, isBotAdmin }) => {
+  const userId = m.sender
+  const user = global.db.data.users[userId]
+  
+  if (await checkReg(m, user)) return
+  
   if (!m.isGroup) return
   
   if (!isBotAdmin) {
-    return conn.reply(m.chat, '> ⓘ \`Necesito ser admin\`', m)
+    await m.react('🌱')
+    return
   }
   
   if (!isAdmin) {
-    return conn.reply(m.chat, '> ⓘ \`Solo admins pueden usar esto\`', m)
+    await m.react('🍀')
+    return
   }
 
-  let targetUser = null
-  
-  // Buscar usuario mencionado
-  if (m.mentionedJid && m.mentionedJid.length > 0) {
-    targetUser = m.mentionedJid[0]
-  } 
-  // Buscar usuario del mensaje citado
-  else if (m.quoted) {
-    targetUser = m.quoted.sender
-  }
+  let targetUser = m.quoted?.sender || (m.mentionedJid && m.mentionedJid[0])
   
   if (!targetUser) {
-    return conn.reply(m.chat, '> ⓘ \`Menciona o responde a un usuario\`', m)
+    await m.react('❓')
+    return conn.reply(m.chat, '> Menciona a un admin.', m)
   }
 
-  // Verificar que está en el grupo
   const userInGroup = participants.find(p => p.id === targetUser)
   if (!userInGroup) {
-    return conn.reply(m.chat, '> ⓘ \`Usuario no está en el grupo\`', m)
+    await m.react('❌')
+    return conn.reply(m.chat, '> No está en el grupo.', m)
   }
 
-  // No quitar admin al creador
   if (userInGroup.admin === 'superadmin') {
-    return conn.reply(m.chat, '> ⓘ \`No puedo quitar admin al creador\`', m)
+    await m.react('⚠️')
+    return conn.reply(m.chat, '> No puedo quitar admin al creador.', m)
   }
 
-  // Verificar si es admin
   if (userInGroup.admin !== 'admin') {
-    return conn.reply(m.chat, '> ⓘ \`El usuario no es admin\`', m)
+    await m.react('ℹ️')
+    return conn.reply(m.chat, '> No es admin.', m)
   }
 
-  await m.react('🕒')
+  await m.react('🔧')
 
   try {
     await conn.groupParticipantsUpdate(m.chat, [targetUser], 'demote')
-    await m.react('✅')
     
-    await conn.reply(m.chat, 
-      `> ⓘ \`Admin removido:\` *@${targetUser.split('@')[0]}*`,
-      m,
-      { mentions: [targetUser] }
-    )
-
+    // El engranaje final de KarBot ⚙️
+    await m.react('⚙️')
+    
+    await conn.reply(m.chat, '> 🍃 Admin removido.', m)
+    
   } catch (error) {
     await m.react('❌')
-    await conn.reply(m.chat, `> ⓘ \`Error:\` *${error.message}*`, m)
+    await conn.reply(m.chat, '> Lo siento, hubo un error.', m)
   }
 }
 

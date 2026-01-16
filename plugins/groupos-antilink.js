@@ -1,20 +1,45 @@
-let handler = async (m, { conn, args, usedPrefix, command, isAdmin, isBotAdmin }) => {
-  if (!m.isGroup) return
-  if (!isAdmin) return
+import { checkReg } from '../lib/checkReg.js'
 
-  const action = args[0]?.toLowerCase()
+let handler = async (m, { conn, args, usedPrefix, command, isAdmin, isBotAdmin }) => {
+  const userId = m.sender
+  const user = global.db.data.users[userId]
+  
+  // Verificación de registro
+  if (await checkReg(m, user)) return
+  
+  if (!m.isGroup) {
+    await m.react('❌')
+    return m.reply('> Solo funciona en grupos.')
+  }
+
+  if (!isAdmin) {
+    await m.react('🚫')
+    return m.reply('> Solo administradores.')
+  }
+
   if (!global.antilink) global.antilink = {}
+  const action = args[0]?.toLowerCase()
 
   if (!action) {
-    return conn.reply(m.chat, `> ⓘ \`Uso:\` *${usedPrefix}antilink on/off*`, m)
+    await m.react('🌿')
+    return m.reply(`> Antilink ${global.antilink[m.chat] ? 'activado' : 'desactivado'}\n\n> Uso: ${usedPrefix}antilink [on/off]`)
   }
 
   if (action === 'on') {
     global.antilink[m.chat] = true
-    await m.react('✅')
+    // Reacción inicial
+    await m.react('🔧')
+    // El engranaje final de KarBot ⚙️
+    await m.react('⚙️')
+    m.reply('> Antilink activado')
+    
   } else if (action === 'off') {
     delete global.antilink[m.chat]
-    await m.react('✅')
+    // Reacción inicial
+    await m.react('🔧')
+    // El engranaje final de KarBot ⚙️
+    await m.react('⚙️')
+    m.reply('> Antilink desactivado')
   }
 }
 

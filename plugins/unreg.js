@@ -1,57 +1,50 @@
 import { saveDatabase } from '../lib/db.js'
-import { sendUnregisterCard } from '../lib/unregister.js'
 
-function toNum(jid = '') { return String(jid).split('@')[0].split(':')[0].replace(/[^0-9]/g, '') }
+let handler = async (m, { conn, usedPrefix }) => {
+  let who = m.sender
+  let user = global.db.data.users[who]
 
-function mirrorUser(users, numKey, jidKey) {
-  if (!users) return
-  const a = users[numKey]
-  const b = users[jidKey]
-  if (a && !b) users[jidKey] = a
-  else if (b && !a) users[numKey] = b
-}
-
-let handler = async (m, { conn, args, command, usedPrefix }) => {
-  const num = toNum(m.sender)
-  const jidKey = m.sender
-  const users = (global.db && global.db.data && global.db.data.users) ? global.db.data.users : {}
-  // Sincroniza claves numéricas y JID si alguna existe
-  try { mirrorUser(users, num, jidKey) } catch {}
-  const recNum = users[num]
-  const recJid = users[jidKey]
-  const existing = (recNum && (recNum.registered || recNum.sn)) ? recNum
-    : (recJid && (recJid.registered || recJid.sn)) ? recJid
-    : (recNum || recJid)
-
-  if (/^unreg$/i.test(command)) {
-    if (!existing || !(existing.registered || existing.sn)) {
-      // No está registrado: responder texto simple
-      await conn.reply(m.chat, 'No estás registrado.', m)
-      return
-    }
-
-    // Eliminar marca de registro y datos claves
-    const clearKeys = ['registered', 'name', 'age', 'bio', 'sn', 'regDate']
-  const targets = [users[num], users[jidKey]].filter(Boolean)
-  if (!targets.length) targets.push(existing)
-  for (const obj of targets) { for (const k of clearKeys) delete obj[k] }
-
-    // Mantener progreso y economía si existen; si se desea limpiar todo, añadir más claves aquí
-  users[num] = existing
-  users[jidKey] = existing
-    try { await saveDatabase() } catch {}
-
-    let displayName = m?.pushName || ''
-    try { displayName = (await Promise.resolve(conn.getName?.(m.sender))) || displayName } catch {}
-    if (!displayName) displayName = 'Usuario'
-
-  await sendUnregisterCard(conn, m.chat, { participant: m.sender, userName: displayName })
-    return
+  // 1. VERIFICAR SI ESTÁ REGISTRADO
+  if (!user || !user.registered) {
+    await m.react('🥀')
+    return m.reply(`> 🎀 *Cariño:* No puedo borrar algo que no existe. Aún no te has presentado conmigo.`)
   }
+
+  // 2. ELIMINAR DATOS DE IDENTIDAD (Mantenemos economía por seguridad)
+  user.registered = false
+  user.registeredName = "" // Limpiamos el nombre blindado
+  user.age = 0
+  user.genre = ""
+  user.colorFav = ""
+  user.animalFav = ""
+  user.cumple = ""
+
+  await m.react('💔')
+
+  // 3. MENSAJE DE DESPEDIDA HUMANO
+  let txt = `> 🥀 *𝚄𝚗 𝚟í𝚗𝚌𝚞𝚕𝚘 𝚜𝚎 𝚑𝚊 𝚛𝚘𝚝𝚘...*\n\n`
+  txt += `He borrado tu nombre y tu esencia de mi memoria. Me duele un poco verte partir de esta manera, pero respeto tu decisión.\n\n`
+  txt += `Ya no te llamaré por tu nombre, volverás a ser un número más en mi lista hasta que decidas volver a decirme quién eres con *${usedPrefix}reg*.\n\n`
+  txt += `_He guardado tus monedas y nivel por si decides regresar algún día..._`
+
+  await conn.sendMessage(m.chat, { 
+    text: txt,
+    contextInfo: {
+      externalAdReply: {
+        title: '💔 VÍNCULO ELIMINADO',
+        body: 'KarBot: Me siento un poco más vacía ahora.',
+        thumbnailUrl: 'https://i.postimg.cc/63HSmCvV/1757985995273.png',
+        mediaType: 1,
+        showAdAttribution: true
+      }
+    }
+  }, { quoted: m })
+
+  try { await saveDatabase() } catch (e) { console.error(e) }
 }
 
 handler.help = ['unreg']
-handler.tags = ['user']
-handler.command = /^unreg$/i
+handler.tags = ['main']
+handler.command = /^(unreg|anular)$/i
 
 export default handler

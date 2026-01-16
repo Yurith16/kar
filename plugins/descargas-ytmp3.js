@@ -126,6 +126,6 @@ async function tryReact(m, emoji) {
 
 handler.help = ['ytmp3']
 handler.tags = ['downloader']
-handler.command = /^(ytmp3|ytmp4)$/i
+handler.command = /^(ytmp3|)$/i
 
 export default handler

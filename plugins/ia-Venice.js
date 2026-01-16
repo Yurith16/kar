@@ -1,29 +1,27 @@
 import axios from "axios";
+import { checkReg } from '../lib/checkReg.js';
 
 let handler = async (m, { conn, text, usedPrefix, command }) => {
-    const ctxErr = (global.rcanalx || {})
-    const ctxWarn = (global.rcanalw || {})
-    const ctxOk = (global.rcanalr || {})
+    const userId = m.sender
+    const user = global.db.data.users[userId]
+    
+    // Verificación de registro
+    if (await checkReg(m, user)) return
     
     const query = text || (m.quoted && m.quoted.text);
 
     if (!query) {
-        await conn.sendMessage(m.chat, {
-            react: {
-                text: '❌',
-                key: m.key
-            }
-        });
-        return conn.reply(m.chat, "❌ Ingresa una pregunta.\nEjemplo: .venice ¿Qué es la inteligencia artificial?", m, ctxWarn);
+        await m.react('🌿')
+        return conn.reply(m.chat, 
+`> Escribe una pregunta.
+
+> Ejemplo:
+> ${usedPrefix}venice ¿Qué es la inteligencia artificial?`, m)
     }
 
     try {
-        await conn.sendMessage(m.chat, {
-            react: {
-                text: '⏳',
-                key: m.key
-            }
-        });
+        // Reacción de procesamiento
+        await m.react('🍃')
 
         const { data } = await axios.request({
             method: "POST",
@@ -58,35 +56,28 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         const result = chunks.map((chunk) => chunk.content).join("");
 
         if (!result) {
-            throw new Error("No hubo respuesta de Venice AI");
+            await m.react('❌')
+            return conn.reply(m.chat, '> Lo siento, hubo un error.', m)
         }
 
-        await conn.reply(m.chat, `🧠 *Venice AI:*\n${result}`, m, ctxOk);
-
-        await conn.sendMessage(m.chat, {
-            react: {
-                text: '✅',
-                key: m.key
-            }
-        });
+        // Enviar respuesta con formato > en cada línea
+        const lineas = result.split('\n')
+        const respuestaFormateada = lineas.map(linea => `> ${linea}`).join('\n')
+        
+        await conn.reply(m.chat, respuestaFormateada, m)
+        
+        // El engranaje final de KarBot ⚙️
+        await m.react('⚙️')
 
     } catch (err) {
-        console.error("Error Venice:", err.message);
-        
-        await conn.sendMessage(m.chat, {
-            react: {
-                text: '❎',
-                key: m.key
-            }
-        });
-        
-        await conn.reply(m.chat, `❌ Error: ${err.message}`, m, ctxErr);
+        console.error("Error Venice:", err.message)
+        await m.react('❌')
+        await conn.reply(m.chat, '> Lo siento, hubo un error.', m)
     }
 };
 
-handler.help = ['venice'];
-handler.tags = ['ia'];
-handler.command = ['venice', 'veniceai'];
-handler.group = true;
+handler.command = ['venice', 'veniceai']
+handler.help = ['venice']
+handler.tags = ['ai',"bots"]
 
 export default handler;

@@ -1,17 +1,26 @@
+import { checkReg } from '../lib/checkReg.js'
+
 const handler = async (m, { conn, text, participants, isAdmin, isBotAdmin, usedPrefix, command }) => {
+  const userId = m.sender
+  const user = global.db.data.users[userId]
+  
+  // Verificación de registro
+  if (await checkReg(m, user)) return
+  
   if (!m.isGroup) {
-    return conn.reply(m.chat, '> ⓘ \`Este comando solo funciona en grupos\`', m)
+    await m.react('❌')
+    return conn.reply(m.chat, '> Solo funciona en grupos.', m)
   }
 
   if (!isBotAdmin) {
-    return conn.reply(m.chat, '> ⓘ \`Necesito ser administradora para promover usuarios\`', m)
+    await m.react('🌱')
+    return conn.reply(m.chat, '> Necesito ser admin.', m)
   }
 
   if (!isAdmin) {
-    return conn.reply(m.chat, '> ⓘ \`Solo los administradores pueden usar este comando\`', m)
+    await m.react('🍀')
+    return conn.reply(m.chat, '> Solo administradores.', m)
   }
-
-  await m.react('🕒')
 
   try {
     let targetUser = null
@@ -20,56 +29,47 @@ const handler = async (m, { conn, text, participants, isAdmin, isBotAdmin, usedP
       targetUser = m.mentionedJid[0]
     } else if (m.quoted) {
       targetUser = m.quoted.sender
-    } else if (text) {
-      const num = text.replace(/[^0-9]/g, '')
-      if (num.length >= 8) {
-        targetUser = num + '@s.whatsapp.net'
-      }
     }
 
     if (!targetUser) {
-      await m.react('❌')
-      return conn.reply(m.chat, 
-        `> ⓘ \`Debes mencionar o responder a un usuario\`\n> ⓘ \`Ejemplo:\` *${usedPrefix}${command} @usuario*`, 
-        m
-      )
+      await m.react('❓')
+      return conn.reply(m.chat, '> Menciona o responde a un usuario.', m)
     }
 
-    const groupMetadata = await conn.groupMetadata(m.chat).catch(() => null)
-    if (!groupMetadata) {
-      await m.react('❌')
-      return conn.reply(m.chat, '> ⓘ \`Error al obtener información del grupo\`', m)
-    }
-
-    const userInGroup = groupMetadata.participants.find(p => 
+    const userInGroup = participants.find(p => 
       p.id === targetUser || 
       p.jid === targetUser
     )
 
     if (!userInGroup) {
       await m.react('❌')
-      return conn.reply(m.chat, '> ⓘ \`El usuario no está en este grupo\`', m)
+      return conn.reply(m.chat, '> El usuario no está en el grupo.', m)
     }
 
     if (userInGroup.admin === 'admin' || userInGroup.admin === 'superadmin') {
       await m.react('ℹ️')
-      return conn.reply(m.chat, '> ⓘ \`Este usuario ya es administrador\`', m)
+      return conn.reply(m.chat, '> El usuario ya es administrador.', m)
     }
 
+    // Reacción de procesamiento con hojita
+    await m.react('🍃')
+    
     await conn.groupParticipantsUpdate(m.chat, [targetUser], 'promote')
     
-    await m.react('✅')
-    await conn.reply(m.chat, `> ⓘ \`Usuario promovido:\` *@${targetUser.split('@')[0]}*`, m, { mentions: [targetUser] })
+    // El engranaje final de KarBot ⚙️
+    await m.react('⚙️')
+    
+    await conn.reply(m.chat, '> 🍃 Usuario promovido a administrador.', m)
 
   } catch (error) {
     await m.react('❌')
     
     if (error.message?.includes('not authorized')) {
-      return conn.reply(m.chat, '> ⓘ \`No tengo permisos suficientes para promover usuarios\`', m)
+      return conn.reply(m.chat, '> Sin permisos suficientes para esta acción.', m)
     } else if (error.message?.includes('not in group')) {
-      return conn.reply(m.chat, '> ⓘ \`El usuario no está en el grupo\`', m)
+      return conn.reply(m.chat, '> El usuario no está en el grupo.', m)
     } else {
-      return conn.reply(m.chat, `> ⓘ \`Error:\` *${error.message}*`, m)
+      return conn.reply(m.chat, '> Lo siento, hubo un error.', m)
     }
   }
 }

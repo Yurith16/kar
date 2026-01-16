@@ -1,7 +1,6 @@
 import WebSocket from 'ws'
 import axios from 'axios'
-import { v4 as uuidv4 } from 'uuid'
-import FormData from 'form-data'
+import { checkReg } from '../lib/checkReg.js'
 
 class Copilot {
     constructor() {
@@ -72,34 +71,44 @@ class Copilot {
     }
 }
 
-let handler = async (m, { command, text }) => {
-    try {
-        if (!text) return m.reply(`*Ejemplo :* .${command} ¿Qué es Nodejs?`)
-        let copilot = new Copilot()
-        let model
-        switch (command) {
-            case 'copilot':
-                model = 'default'
-            break
-            case 'copilot-think':
-                model = 'think-deeper'
-            break
-            case 'gpt-5':
-                model = 'gpt-5'
-            break
-            default:
-                model = 'default'
-            break
-        }
-        let res = await copilot.chat(text, { model })
-        await m.reply(res.text.trim())
-    } catch (e) {
-        m.reply(e.message)
+let handler = async (m, { command, text, usedPrefix }) => {
+  const userId = m.sender
+  const user = global.db.data.users[userId]
+  
+  // Verificación de registro
+  if (await checkReg(m, user)) return
+  
+  try {
+    if (!text) {
+      await m.react('🌿')
+      return m.reply(`> Escribe una pregunta.\n\n> Ejemplo:\n> ${usedPrefix}copilot ¿Qué es Nodejs?`)
     }
+    
+    // Reacción de procesamiento
+    await m.react('🍃')
+    
+    let copilot = new Copilot()
+    let model = 'default'
+    
+    let res = await copilot.chat(text, { model })
+    
+    // Formatear respuesta con > en cada línea
+    const lineas = res.text.trim().split('\n')
+    const respuestaFormateada = lineas.map(linea => `> ${linea}`).join('\n')
+    
+    await m.reply(respuestaFormateada)
+    
+    // El engranaje final de KarBot ⚙️
+    await m.react('⚙️')
+    
+  } catch (e) {
+    await m.react('❌')
+    await m.reply('> Lo siento, hubo un error.')
+  }
 }
 
-handler.help = ['copilot']
 handler.command = ['copilot']
-handler.tags = ['ia']
+handler.help = ['copilot']
+handler.tags = ['ai',"bots"]
 
 export default handler

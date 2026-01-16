@@ -1,0 +1,245 @@
+import ws from 'ws'
+
+// Quoted especial con estética KARBOT
+async function makeFkontak() {
+    try {
+        const thumb2 = Buffer.alloc(0)
+        return {
+            key: { 
+                participants: '0@s.whatsapp.net', 
+                remoteJid: 'status@broadcast', 
+                fromMe: false, 
+                id: 'KarBotList' 
+            },
+            message: { 
+                locationMessage: { 
+                    name: '📋 𝙻𝙸𝚂𝚃𝙰 𝙳𝙴 𝚂𝚄𝙱𝙱𝙾𝚃𝚂', 
+                    jpegThumbnail: thumb2 
+                } 
+            },
+            participant: '0@s.whatsapp.net'
+        }
+    } catch { return undefined }
+}
+
+function dhms(ms) {
+    const segundos = Math.floor(ms / 1000);
+    const minutos = Math.floor(segundos / 60);
+    const horas = Math.floor(minutos / 60);
+    const días = Math.floor(horas / 24);
+
+    const s = segundos % 60;
+    const m = minutos % 60;
+    const h = horas % 24;
+
+    let resultado = "";
+    if (días !== 0) resultado += días + 'd '
+    if (h !== 0) resultado += h + 'h '
+    if (m !== 0) resultado += m + 'm '
+    if (s !== 0) resultado += s + 's'
+    return resultado || "0s";
+}
+
+// Nueva función para verificar conexión real
+function isSubbotActive(subbot) {
+    if (!subbot || !subbot.user) return false;
+    
+    // Método 1: Verificar si el socket está definido y en estado OPEN
+    if (subbot.ws) {
+        return subbot.ws.readyState === ws.OPEN;
+    }
+    
+    // Método 2: Verificar si hay un objeto de conexión con estado
+    if (subbot.connection) {
+        return subbot.connection === 'open';
+    }
+    
+    // Método 3: Verificar si tiene credenciales válidas y está marcado como activo
+    if (subbot.user && subbot.user.id) {
+        return true; // Asumir activo si tiene usuario
+    }
+    
+    return false;
+}
+
+// Función para obtener número de teléfono si está disponible
+function getSubbotPhoneNumber(subbot) {
+    if (!subbot || !subbot.user) return "Desconocido";
+    
+    try {
+        // Intentar extraer de diferentes formas
+        if (subbot.user.jid) {
+            // Formato: 123456789@s.whatsapp.net
+            const phone = subbot.user.jid.split('@')[0];
+            if (phone && phone.length >= 7) {
+                return `+${phone}`;
+            }
+        }
+        
+        if (subbot.user.id) {
+            // A veces el ID es el número directamente
+            const id = subbot.user.id.toString();
+            if (id.includes('@s.whatsapp.net')) {
+                return `+${id.split('@')[0]}`;
+            }
+            // Si parece un número de teléfono
+            if (/^\d+$/.test(id) && id.length >= 7) {
+                return `+${id}`;
+            }
+        }
+        
+        return "Desconocido";
+    } catch {
+        return "Desconocido";
+    }
+}
+
+let handler = async(m, { usedPrefix, conn, text }) => {
+    // Reacción inicial
+    try { await conn.sendMessage(m.chat, { react: { text: '🔍', key: m.key } }) } catch {}
+    
+    // Obtener subbots usando la nueva función de verificación
+    const activeSubbots = [];
+    const inactiveButValid = [];
+    
+    if (global.subbots && Array.isArray(global.subbots)) {
+        for (const subbot of global.subbots) {
+            if (isSubbotActive(subbot)) {
+                activeSubbots.push(subbot);
+            } else if (subbot.user && subbot.id) {
+                // Tiene credenciales pero no está conectado actualmente
+                inactiveButValid.push(subbot);
+            }
+        }
+    }
+    
+    const totalActive = activeSubbots.length;
+    const totalWithCredentials = activeSubbots.length + inactiveButValid.length;
+    
+    // Contar sesiones guardadas
+    async function countSavedSessions() {
+        try {
+            const fs = await import('fs/promises');
+            const path = await import('path');
+            
+            const sessionsDir = 'Sessions/SubBot';
+            try {
+                await fs.access(sessionsDir);
+            } catch {
+                return 0;
+            }
+            
+            const items = await fs.readdir(sessionsDir);
+            let sessionCount = 0;
+            
+            for (const item of items) {
+                try {
+                    const itemPath = path.join(sessionsDir, item);
+                    const stats = await fs.stat(itemPath);
+                    
+                    if (stats.isDirectory()) {
+                        // Verificar si tiene creds.json válido
+                        const credsPath = path.join(itemPath, 'creds.json');
+                        try {
+                            await fs.access(credsPath);
+                            const credsStats = await fs.stat(credsPath);
+                            if (credsStats.size > 100) { // Más de 100 bytes = válido
+                                sessionCount++;
+                            }
+                        } catch {
+                            // No tiene creds.json o es inválido
+                        }
+                    }
+                } catch {
+                    continue;
+                }
+            }
+            
+            return sessionCount;
+        } catch (error) {
+            console.error('Error contando sesiones:', error);
+            return 0;
+        }
+    }
+    
+    const sesionesGuardadas = await countSavedSessions();
+    
+    // Construir mensaje
+    let cap = `╭━━〔 📊 *𝚂𝚃𝙰𝚃𝚄𝚂 𝚂𝚄𝙱𝙱𝙾𝚃𝚂* 〕━━⬣\n`;
+    cap += `┃\n`;
+    cap += `┃ 💾 𝚂𝙴𝚂𝙸𝙾𝙽𝙴𝚂 𝙶𝚄𝙰𝚁𝙳𝙰𝙳𝙰𝚂: ${sesionesGuardadas}\n`;
+    cap += `┃ 🟢 𝚂𝙴𝚂𝙸𝙾𝙽𝙴𝚂 𝙰𝙲𝚃𝙸𝚅𝙰𝚂: ${totalActive}/100\n`;
+    cap += `┃ 📁 𝚂𝙴𝚂𝙸𝙾𝙽𝙴𝚂 𝚅Á𝙻𝙸𝙳𝙰𝚂: ${totalWithCredentials}\n`;
+    cap += `┃\n`;
+    cap += `╰━━━━━━━━━━━━━━━━━━━━━━⬣\n\n`;
+    
+    // Listar subbots activos
+    if (totalActive > 0) {
+        cap += `*🟢 𝚂𝚄𝙱𝙱𝙾𝚃𝚂 𝙰𝙲𝚃𝙸𝚅𝙾𝚂:*\n`;
+        
+        activeSubbots.forEach((subbot, index) => {
+            const phoneNumber = getSubbotPhoneNumber(subbot);
+            const name = subbot.user?.name || `Sub-Bot ${index + 1}`;
+            const uptime = subbot.uptime ? dhms(Date.now() - subbot.uptime) : "Recién activo";
+            const id = subbot.id || subbot.user?.id?.split('@')[0] || "Desconocido";
+            
+            cap += `*${index + 1}.* 🤖 *${name}*\n`;
+            cap += `> 📱 *𝙽𝚄𝙼𝙴𝚁𝙾:* ${phoneNumber}\n`;
+            cap += `> ⏱️ *𝚄𝙿𝚃𝙸𝙼𝙴:* ${uptime}\n`;
+            cap += `> 🔗 *𝙸𝙳:* ${id}\n`;
+            cap += `────────────────\n\n`;
+        });
+    } else {
+        cap += `> 📭 *𝙽𝙾 𝙷𝙰𝚈 𝚂𝚄𝙱𝙱𝙾𝚃𝚂 𝙰𝙲𝚃𝙸𝚅𝙾𝚂 𝙴𝙽 𝙴𝚂𝚃𝙴 𝙼𝙾𝙼𝙴𝙽𝚃𝙾*\n\n`;
+    }
+    
+    // Listar sesiones válidas pero no activas
+    if (inactiveButValid.length > 0) {
+        cap += `*🟡 𝚂𝙴𝚂𝙸𝙾𝙽𝙴𝚂 𝙳𝙸𝚂𝙿𝙾𝙽𝙸𝙱𝙻𝙴𝚂 (𝚄𝚂𝙰𝚁 .𝚛𝚎𝚌𝚘𝚗𝚎𝚌𝚝𝚊𝚛):*\n`;
+        
+        inactiveButValid.forEach((subbot, index) => {
+            const phoneNumber = getSubbotPhoneNumber(subbot);
+            const id = subbot.id || "Desconocido";
+            
+            cap += `*${index + 1}.* 💾 *𝙸𝙳:* ${id}\n`;
+            cap += `> 📱 *𝙽𝚄𝙼𝙴𝚁𝙾:* ${phoneNumber}\n`;
+            cap += `> ⚠️ *𝙴𝚂𝚃𝙰𝙳𝙾:* Sesión guardada (no conectada)\n`;
+            cap += `────────────────\n\n`;
+        });
+    }
+    
+    // Consejo de reconexión
+    if (inactiveButValid.length > 0) {
+        cap += `\n💡 *𝚃𝙸𝙿:* Usa *${usedPrefix}reconectar <id>* para reactivar sesiones guardadas\n`;
+        cap += `   Ejemplo: *${usedPrefix}reconectar ${inactiveButValid[0]?.id || "usuario"}*\n`;
+    }
+    
+    const fkontak = await makeFkontak();
+    const mentions = activeSubbots
+        .map(subbot => subbot.user?.jid)
+        .filter(jid => jid && jid.includes('@s.whatsapp.net'));
+    
+    try {
+        await conn.sendMessage(m.chat, { react: { text: '✅', key: m.key } });
+        
+        await conn.sendMessage(m.chat, {
+            text: cap.trim(), 
+            mentions: mentions,
+        }, { quoted: fkontak || m });
+        
+    } catch (e) {
+        console.error('Error enviando mensaje:', e);
+        // Fallback simple
+        try {
+            await conn.reply(m.chat, cap.trim(), m);
+        } catch (e2) {
+            console.error('Error en fallback:', e2);
+        }
+    }
+}
+
+handler.help = ['botlist'];
+handler.tags = ['serbot'];
+handler.command = ['bots', 'listabots', 'subbots', 'statusbots']; 
+
+export default handler;

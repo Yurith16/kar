@@ -1,27 +1,49 @@
 import fetch from 'node-fetch'
 import yts from 'yt-search'
+import { checkReg } from '../lib/checkReg.js'
 
 let handler = async (m, { conn, text, usedPrefix }) => {
+  const userId = m.sender
+  const user = global.db.data.users[userId]
+  
+  // Verificación de registro
+  if (await checkReg(m, user)) return
+  
   if (!text) {
-    return conn.reply(m.chat, 
-`> ⓘ USO INCORRECTO
-
-> ❌ Debes proporcionar el nombre de la canción
-
-> 📝 Ejemplos:
-> • ${usedPrefix}play nombre de la canción
-> • ${usedPrefix}play artista canción`, m)
+    return conn.reply(m.chat, '> Debe ingresar el nombre de una música', m)
   }
 
   try {
-    await conn.sendMessage(m.chat, { react: { text: '🕑', key: m.key } })
+    // Secuencia de reacciones con plantas y tréboles
+    const reacciones = ['🔍', '🌿', '🍀', '🎶']
+    for (const reacc of reacciones) {
+      await m.react(reacc)
+    }
 
     const search = await yts(text)
-    if (!search.videos.length) throw new Error('No encontré resultados')
+    if (!search.videos.length) {
+      await m.react('❌')
+      return conn.reply(m.chat, '> Lo siento, hubo un error.', m)
+    }
 
     const video = search.videos[0]
-    const { title, url, thumbnail } = video
+    const { title, url, thumbnail, author, views, duration, ago } = video
 
+    // --- DISEÑO DE DETALLES EXACTO ---
+    const videoDetails = `> 🎵 *「🌱」 ${title}*\n\n` +
+        `> 🍃 *Canal:* » ${author.name}\n` +
+        `> ⚘ *Duración:* » ${duration.timestamp}\n` +
+        `> 🌼 *Vistas:* » ${(views || 0).toLocaleString()}\n` +
+        `> 🍀 *Publicado:* » ${ago || 'Desconocido'}\n` +
+        `> 🌿 *Enlace:* » ${url}`
+
+    // Enviar imagen con detalles primero
+    await conn.sendMessage(m.chat, {
+        image: { url: thumbnail },
+        caption: videoDetails
+    }, { quoted: m })
+
+    // Obtener miniatura como buffer
     let thumbBuffer = null
     if (thumbnail) {
       try {
@@ -56,38 +78,30 @@ let handler = async (m, { conn, text, usedPrefix }) => {
     }
 
     if (!exito) {
-      await conn.sendMessage(m.chat, { react: { text: '❌', key: m.key } })
-      return conn.reply(m.chat, 
-`> ⓘ ERROR
-
-> ❌ No se pudo obtener el audio
-
-> 💡 Las APIs están temporalmente fuera de servicio`, m)
+      // El engranaje final de KarBot ⚙️
+      await m.react('⚙️')
+      return conn.reply(m.chat, '> Lo siento, hubo un error.', m)
     }
 
+    // Enviar audio como documento
     await conn.sendMessage(
       m.chat,
       {
-        audio: { url: audioUrl },
+        document: { url: audioUrl },
         mimetype: 'audio/mpeg',
-        ptt: false,
-        jpegThumbnail: thumbBuffer,
-        fileName: `audio.mp3`
+        fileName: `${title}.mp3`,
+        caption: `> 🎵 ${title}`
       },
       { quoted: m }
     )
 
-    await conn.sendMessage(m.chat, { react: { text: '✅', key: m.key } })
+    // El engranaje final de KarBot ⚙️
+    await m.react('⚙️')
 
   } catch (e) {
     console.error('Error en play:', e)
-    await conn.reply(m.chat, 
-`> ⓘ ERROR
-
-> ❌ ${e.message}
-
-> 💡 Verifica el nombre o intenta más tarde`, m)
-    await conn.sendMessage(m.chat, { react: { text: '❌', key: m.key } })
+    await m.react('❌')
+    await conn.reply(m.chat, '> Lo siento, hubo un error.', m)
   }
 }
 

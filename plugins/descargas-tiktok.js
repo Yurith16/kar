@@ -1,25 +1,42 @@
 import axios from 'axios'
+import { checkReg } from '../lib/checkReg.js'
 
 const handler = async (m, { conn, text, usedPrefix, command }) => {
+  const userId = m.sender
+  const user = global.db.data.users[userId]
+  
+  // Verificación de registro
+  if (await checkReg(m, user)) return
+  
   if (!text) {
-    return conn.reply(m.chat, `> ⓘ \`Debes proporcionar un enlace o término de búsqueda\``, m)
+    return conn.reply(m.chat, '> Debe proporcionar un enlace de TikTok.', m)
   }
 
   const isUrl = /(?:https:?\/{2})?(?:www\.|vm\.|vt\.|t\.)?tiktok\.com\/([^\s&]+)/gi.test(text)
+  
   try {
-    await m.react('🕒')
+    // Secuencia de reacciones con plantas y tréboles
+    const reacciones = ['🔍', '🌿', '🍀', '📥']
+    for (const reacc of reacciones) {
+      await m.react(reacc)
+    }
 
     if (isUrl) {
       const res = await axios.get(`https://www.tikwm.com/api/?url=${encodeURIComponent(text)}?hd=1`)
       const data = res.data?.data
-      if (!data?.play && !data?.music) return conn.reply(m.chat, '> ⓘ \`Enlace inválido o sin contenido descargable\`', m)
+      
+      if (!data?.play && !data?.music) {
+        await m.react('❌')
+        return conn.reply(m.chat, '> Lo siento, hubo un error.', m)
+      }
 
-      const { title, duration, author, play, music } = data
+      const { play, music } = data
 
       // Si el comando es para audio
       if (command === 'tiktokaudio' || command === 'tta' || command === 'ttaudio') {
         if (!music) {
-          return conn.reply(m.chat, '> ⓘ \`No se pudo obtener el audio del video\`', m)
+          await m.react('❌')
+          return conn.reply(m.chat, '> Lo siento, hubo un error.', m)
         }
 
         await conn.sendMessage(
@@ -28,24 +45,27 @@ const handler = async (m, { conn, text, usedPrefix, command }) => {
             audio: { url: music },
             mimetype: 'audio/mpeg',
             fileName: `tiktok_audio.mp3`,
-            ptt: false
+            ptt: false,
+            caption: '> Descarga completada'
           },
           { quoted: m }
         )
 
-        await m.react('✅')
+        // El engranaje final de KarBot ⚙️
+        await m.react('⚙️')
         return
       }
 
       // Comando normal de TikTok (video)
-      const caption = `> ⓘ \`Título:\` *${title || 'No disponible'}*\n> ⓘ \`Autor:\` *${author?.nickname || 'No disponible'}*`
-
-      await conn.sendMessage(m.chat, { video: { url: play }, caption }, { quoted: m })
+      await conn.sendMessage(m.chat, { 
+        video: { url: play }, 
+        caption: '> Descarga completada'
+      }, { quoted: m })
 
     } else {
       // Búsqueda por texto (solo para comando normal)
       if (command === 'tiktokaudio' || command === 'tta' || command === 'ttaudio') {
-        return conn.reply(m.chat, '> ⓘ \`Para descargar audio necesitas un enlace de TikTok\`', m)
+        return conn.reply(m.chat, '> Para descargar audio necesitas un enlace de TikTok.', m)
       }
 
       const res = await axios({
@@ -58,19 +78,26 @@ const handler = async (m, { conn, text, usedPrefix, command }) => {
       })
 
       const results = res.data?.data?.videos?.filter(v => v.play) || []
-      if (results.length === 0) return conn.reply(m.chat, '> ⓘ \`No se encontraron videos\`', m)
+      if (results.length === 0) {
+        await m.react('❌')
+        return conn.reply(m.chat, '> Lo siento, hubo un error.', m)
+      }
 
       // Enviar solo el primer resultado
       const video = results[0]
-      const caption = `> ⓘ \`Título:\` *${video.title || 'No disponible'}*\n> ⓘ \`Autor:\` *${video.author?.nickname || 'No disponible'}*`
       
-      await conn.sendMessage(m.chat, { video: { url: video.play }, caption }, { quoted: m })
+      await conn.sendMessage(m.chat, { 
+        video: { url: video.play }, 
+        caption: '> Descarga completada'
+      }, { quoted: m })
     }
 
-    await m.react('✅')
+    // El engranaje final de KarBot ⚙️
+    await m.react('⚙️')
+
   } catch (e) {
     await m.react('❌')
-    await conn.reply(m.chat, `> ⓘ \`Error:\` *${e.message}*`, m)
+    await conn.reply(m.chat, '> Lo siento, hubo un error.', m)
   }
 }
 

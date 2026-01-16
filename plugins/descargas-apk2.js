@@ -1,112 +1,75 @@
+/*
+██████╗░██╗░░░██╗███████╗███████╗
+██╔══██╗╚██╗░██╔╝╚════██║██╔════╝
+██████╔╝░╚████╔╝░░░███╔═╝█████╗░░
+██╔══██╗░░╚██╔╝░░██╔══╝░░██╔══╝░░
+██║░░██║░░░██║░░░███████╗███████╗
+╚═╝░░╚═╝░░░╚═╝░░░╚══════╝╚══════╝
+*/
 import { search, download } from 'aptoide-scraper'
+import { checkReg } from '../lib/checkReg.js'
 import fetch from 'node-fetch'
-import Jimp from 'jimp'
 
 let handler = async (m, { conn, text, usedPrefix, command }) => {
+  if (!m) return
+  const ctx = (global.rcanalr || {})
+  
+  // Verificación de registro
+  let who = m.quoted ? m.quoted.sender : m.mentionedJid && m.mentionedJid[0] ? m.mentionedJid[0] : m.sender
+  let user = global.db.data.users[who]
+  if (await checkReg(m, user)) return
+
   if (!text) {
-    return conn.reply(m.chat, `> ⓘ USO INCORRECTO
-
-> ❌ Debes ingresar el nombre de la aplicación
-
-> 📝 Ejemplos:
-> • ${usedPrefix + command} WhatsApp
-> • ${usedPrefix + command} TikTok
-
-> 💡 Busca y descarga APKs desde Aptoide`, m)
+    await m.react('📝')
+    return conn.reply(m.chat, `> ¿Qué aplicación desea buscar?\n*Uso:* ${usedPrefix + command} <Nombre>`, m, ctx)
   }
 
   try {
-    await conn.sendMessage(m.chat, { react: { text: '🕛', key: m.key } })
-
+    await m.react('🕛')
+    
     let searchA = await search(text)
     if (!searchA.length) {
-      await conn.sendMessage(m.chat, { react: { text: '❌', key: m.key } })
-      return conn.reply(m.chat, `> ⓘ SIN RESULTADOS
-
-> ❌ No se encontraron aplicaciones para: ${text}
-
-> 💡 Verifica la ortografía o usa otro nombre`, m)
+      await m.react('❌')
+      return conn.reply(m.chat, `> No se encontraron resultados para su búsqueda.`, m, ctx)
     }
 
     let data5 = await download(searchA[0].id)
 
-    // Primero enviar solo la imagen/portada del APK
-    let txtPortada = `> 🎴 𝐈𝐍𝐅𝐎 𝐃𝐄𝐋 𝐀𝐏𝐊
+    let infoApk = `💰 *DETALLES DEL APK*
+┌───⊷
+▢ *📱 Nombre:* _${data5.name}_
+▢ *📦 Paquete:* _${data5.package}_
+▢ *💾 Tamaño:* _${data5.size}_
+└──────────────`
 
-> 📱 *Nombre:* ${data5.name}
-> 📦 *Paquete:* ${data5.package}
-> ⭐ *Puntuación:* ${data5.rating || 'N/A'}
-> 📅 *Última actualización:* ${data5.lastup}
-> 💾 *Tamaño:* ${data5.size}
-> 📥 *Descargas:* ${data5.downloads || 'N/A'}
-    
-> 💡 *La imagen muestra el icono oficial de la aplicación*`
-
-    // Enviar primero la imagen de portada
-    await conn.sendFile(m.chat, data5.icon, 'portada-apk.jpg', txtPortada, m)
-
-    // Esperar un momento antes de enviar el APK
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await conn.sendFile(m.chat, data5.icon, 'apk.jpg', infoApk, m, null, ctx)
 
     if (data5.size.includes('GB') || parseFloat(data5.size.replace(' MB', '')) > 999) {
-      await conn.sendMessage(m.chat, { react: { text: '❌', key: m.key } })
-      return conn.reply(m.chat, `> ⓘ ARCHIVO DEMASIADO GRANDE
-
-> ❌ El archivo pesa: ${data5.size}
-
-> 💡 Límite máximo: 999 MB
-> 💡 Busca una versión más ligera`, m)
+      await m.react('❌')
+      return conn.reply(m.chat, `> El archivo excede el límite de peso permitido (999 MB).`, m, ctx)
     }
 
-    // Preparar miniatura para el documento
-    let thumbnail = null
-    try {
-      const img = await Jimp.read(data5.icon)
-      img.resize(300, Jimp.AUTO)
-      thumbnail = await img.getBufferAsync(Jimp.MIME_JPEG)
-    } catch (err) {
-      console.log('Error al crear miniatura:', err)
-    }
+    // Pequeña espera para no saturar el envío
+    await new Promise(resolve => setTimeout(resolve, 1500))
 
-    // Enviar el documento APK
-    await conn.sendMessage(
-      m.chat,
-      {
+    await conn.sendMessage(m.chat, {
         document: { url: data5.dllink },
         mimetype: 'application/vnd.android.package-archive',
-        fileName: `${data5.name}.apk`,
-        caption: `> ✅ 𝐀𝐏𝐊 𝐃𝐄𝐒𝐂𝐀𝐑𝐆𝐀𝐃𝐀
+        fileName: `${data5.name}.apk`
+    }, { quoted: m })
 
-> 📱 *Aplicación:* ${data5.name}
-> 📦 *Paquete:* ${data5.package}
-> 🏷️ *Versión:* ${data5.version || 'N/A'}
-> 💾 *Tamaño:* ${data5.size}
-    
-> 🔐 *Recuerda:* 
-> • Verificar permisos antes de instalar
-> • Descargar solo aplicaciones confiables
-> • Escanear con antivirus si es necesario`,
-        ...(thumbnail ? { jpegThumbnail: thumbnail } : {})
-      },
-      { quoted: m }
-    )
-
-    await conn.sendMessage(m.chat, { react: { text: '✅', key: m.key } })
+    await m.react('✅')
 
   } catch (error) {
     console.error(error)
-    await conn.sendMessage(m.chat, { react: { text: '❌', key: m.key } })
-    return conn.reply(m.chat, `> ⓘ ERROR
-
-> ❌ ${error.message || 'Error al procesar la descarga'}
-
-> 💡 Verifica el nombre o intenta más tarde`, m)
+    await m.react('❌')
+    return conn.reply(m.chat, `> Ocurrió un error inesperado al procesar la solicitud.`, m, ctx)
   }
 }
 
+handler.help = ['apk']
 handler.tags = ['downloader']
-handler.help = ['modoapk']
-handler.command = ['modapk2', 'apk2']
+handler.command = ['apk2', 'apk', 'aptoide']
 handler.group = true
 
 export default handler
