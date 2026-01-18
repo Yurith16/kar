@@ -1,6 +1,8 @@
-import { premiumStyles } from '../lib/styles.js'
+import { saveDatabase } from '../lib/db.js'
+import { checkReg } from '../lib/checkReg.js'
 
 const salasAcertijo = new Map()
+const cooldowns = new Map()
 
 const acertijos = [
     { q: "Se rompe si me nombras, pero existo en la ausencia de sonido. ¿Qué soy?", a: ["El eco", "El silencio", "Un secreto", "El cristal"], c: 1 },
@@ -22,35 +24,54 @@ const acertijos = [
     { q: "Qué tiene muchas palabras pero nunca habla?", a: ["Un libro", "Un loro", "Un eco", "Un mimo"], c: 0 },
     { q: "Vuelo de noche, duermo de día y nunca verás plumas en el ala mía.", a: ["Un búho", "Un murciélago", "Un avión", "Una nube"], c: 1 },
     { q: "Qué tiene un corazón que no late?", a: ["Una estatua", "Una alcachofa", "Un árbol", "Una piedra"], c: 1 },
-    { q: "Blanco por dentro, verde por fuera. Si quieres que te lo diga, espera.", a: ["La manzana", "La pera", "La uva", "El limón"], c: 1 }
+    { q: "Blanco por dentro, verde por fuera. Si quieres que te lo diga, espera.", a: ["La manzana", "La pera", "La uva", "El limón"], c: 1 },
+    { q: "Tengo agujeros, pero aun así puedo retener agua. ¿Qué soy?", a: ["Una red", "Una esponja", "Un colador", "Una nube"], c: 1 },
+    { q: "Viajo por todo el mundo, pero siempre me quedo en una esquina. ¿Qué soy?", a: ["Un sello", "Un avión", "Un pensamiento", "Un mapa"], c: 0 },
+    { q: "Tengo cuello pero no cabeza, y uso tapón pero no boca. ¿Qué soy?", a: ["Un zapato", "Una botella", "Un frasco", "Una lámpara"], c: 1 },
+    { q: "Entro seca y salgo mojada, y cuanto más tiempo paso dentro, más fuerte me vuelvo. ¿Qué soy?", a: ["Una esponja", "Una galleta", "Una bolsa de té", "Una lengua"], c: 2 },
+    { q: "Me puedes ver en el agua, pero nunca me mojo. ¿Qué soy?", a: ["Un pez", "Tu reflejo", "Una burbuja", "La luna"], c: 1 },
+    { q: "Tengo dientes pero nunca muerdo. ¿Qué soy?", a: ["Un peine", "Una sierra", "Un piano", "Un tiburón"], c: 0 },
+    { q: "Cuanto más fuerte es, más asusta, pero no tiene manos ni boca. ¿Qué es?", a: ["El trueno", "El viento", "La oscuridad", "Un fantasma"], c: 0 },
+    { q: "Aparezco una vez en un minuto, dos veces en un momento, pero nunca en cien años. ¿Qué soy?", a: ["El tiempo", "La letra M", "Un segundo", "La casualidad"], c: 1 },
+    { q: "Si lo tiras al aire se rompe, pero si lo tiras al suelo no. ¿Qué es?", a: ["Un huevo", "Un suspiro", "El agua", "Una burbuja"], c: 2 },
+    { q: "Tengo teclas pero no piano, tengo ratón pero no animal. ¿Qué soy?", a: ["Una oficina", "Una computadora", "Un videojuego", "Una televisión"], c: 1 },
+    { q: "Parezco de cristal, pero si me tocas, me deshago en tus manos. ¿Qué soy?", a: ["Un diamante", "El hielo", "Un copo de nieve", "Un cristal"], c: 2 },
+    { q: "Corro pero no tengo pies, y si me detengo, muero. ¿Qué soy?", a: ["El tiempo", "El agua", "El viento", "La sangre"], c: 1 },
+    { q: "Te doy mi luz en la noche, pero si me tocas, te quemo. ¿Qué soy?", a: ["El sol", "Una vela", "Una estrella", "Una bombilla"], c: 1 },
+    { q: "Soy redondo como el queso, pero nadie puede darme un beso. ¿Qué soy?", a: ["La luna", "Un plato", "El sol", "Un reloj"], c: 0 },
+    { q: "Vuelo sin alas, silbo sin boca y pego sin manos. ¿Qué soy?", a: ["Un pájaro", "El viento", "Un fantasma", "El trueno"], c: 1 },
+    { q: "Tengo costillas pero no pulmones, y guardo secretos en mis renglones. ¿Qué soy?", a: ["Un esqueleto", "Un libro", "Un cuaderno", "Un baúl"], c: 1 },
+    { q: "Cuanto más quitas, más grande se vuelve. ¿Qué es?", a: ["Un agujero", "La comida", "Un árbol", "Una deuda"], c: 0 },
+    { q: "Estoy en todo el mundo, pero nadie me ha visto jamás. ¿Qué soy?", a: ["El aire", "El futuro", "El alma", "El viento"], c: 3 },
+    { q: "Tengo hojas pero no soy árbol, tengo lomo pero no soy animal. ¿Qué soy?", a: ["Un bosque", "Un libro", "Una montaña", "Un sofá"], c: 1 },
+    { q: "Me compran para comer, pero nunca me comen. ¿Qué soy?", a: ["La fruta", "Los cubiertos", "El plato", "La mesa"], c: 2 }
 ];
 
 let handler = async (m, { conn }) => {
     let user = global.db.data.users[m.sender]
-    if (!user.premium) return m.reply(`> 💎 *ACCESO EXCLUSIVO*\n\n> Este desafío de intelecto es solo para miembros **Premium**.`)
+    let id = m.sender
+    
+    if (await checkReg(m, user)) return
 
-    if (salasAcertijo.has(m.sender)) return m.reply(`> ⚠️ Ya tienes un acertijo activo. ¡Resuélvelo antes de pedir otro!`)
+    // --- SISTEMA DE COOLDOWN ---
+    let time = cooldowns.get(id) || 0
+    if (Date.now() - time < 30000) {
+        let wait = Math.ceil((30000 - (Date.now() - time)) / 1000)
+        return m.reply(`> ⏳ *ESPERA:* No vayas tan rápido, cielo. Debes esperar **${wait}s** para otro acertijo.`)
+    }
+
+    if (salasAcertijo.has(id)) return m.reply(`> 🎀 *Aviso:* Ya tienes un acertijo activo. ¡Responde con el número!`)
 
     const item = acertijos[Math.floor(Math.random() * acertijos.length)]
-    let s = premiumStyles[user.prefStyle] || (user.premium ? premiumStyles["luxury"] : null)
 
-    let timer = setTimeout(() => {
-        if (salasAcertijo.has(m.sender)) {
-            m.reply(`> ⏰ *𝗧𝗜𝗘𝗠𝗣𝗢 𝗔𝗚𝗢𝗧𝗔𝗗𝗢*\n\n> La respuesta correcta era: **${item.a[item.c]}**.`)
-            salasAcertijo.delete(m.sender)
-        }
-    }, 45000)
-
-    salasAcertijo.set(m.sender, {
+    salasAcertijo.set(id, {
         correct: item.c + 1,
         text: item.a[item.c],
-        chat: m.chat,
-        timer
+        chat: m.chat
     })
 
-    let caption = s ? `${s.top}\n\n` : ''
-    caption += `🧩 *𝗗𝗘𝗦𝗔𝗙𝗜𝗢 𝗘𝗟𝗜𝗧𝗘*\n`
-    caption += `_Demuestra tu intelecto premium, @${m.sender.split('@')[0]}._\n\n`
+    await m.react('🧠')
+    let caption = `🧩 *𝗗𝗘𝗦𝗔𝗙𝗜𝗢 𝗗𝗘 𝗜𝗡𝗧𝗘𝗟𝗘𝗖𝗧𝗢*\n\n`
     caption += `🤔 *𝗣𝗥𝗘𝗚𝗨𝗡𝗧𝗔:* \n`
     caption += `> ${item.q}\n\n`
 
@@ -58,56 +79,61 @@ let handler = async (m, { conn }) => {
         caption += `${i + 1}️⃣ ${op}\n`
     })
 
-    caption += `\n> ⏳ Tienes **45s** para responder con el número.\n`
-    caption += `> ⚠️ Solo tienes **1 oportunidad**.`
-    if (s) caption += `\n\n${s.footer}`
+    caption += `\n> 🔥 *Racha:* ${user.racha || 0}\n`
+    caption += `> ⚠️ Solo tienes **1 oportunidad**.\n`
+    caption += `> _Responde solo con el número de la opción._`
 
-    await m.react('🧠')
-    return conn.reply(m.chat, caption, m, { mentions: [m.sender] })
+    return conn.reply(m.chat, caption, m)
 }
 
-handler.before = async (m) => {
-    let game = salasAcertijo.get(m.sender)
+handler.before = async (m, { conn }) => {
+    let id = m.sender
+    let game = salasAcertijo.get(id)
     if (!game || m.isBaileys || !m.text) return 
     if (m.chat !== game.chat) return 
 
     if (!/^[1-4]$/.test(m.text.trim())) return 
 
     let input = parseInt(m.text.trim())
-    let user = global.db.data.users[m.sender]
+    let user = global.db.data.users[id]
 
     if (input === game.correct) {
-        let ganKryons = Math.floor(Math.random() * 3) + 2    
-        let ganCoins = Math.floor(Math.random() * 200) + 150 
-        let ganDiamonds = 1  
+        let ganCoins = Math.floor(Math.random() * (2200 - 1500 + 1)) + 1500 
+        let ganDiamonds = Math.random() > 0.7 ? 2 : 1
 
-        user.kryons = (user.kryons || 0) + ganKryons
         user.coin = (user.coin || 0) + ganCoins
         user.diamond = (user.diamond || 0) + ganDiamonds
+        user.racha = (user.racha || 0) + 1
 
-        clearTimeout(game.timer)
-        salasAcertijo.delete(m.sender)
+        let bonus = ""
+        if (user.racha % 5 === 0) {
+            user.hotpass = (user.hotpass || 0) + 1
+            bonus = `\n🔥 *BONUS RACHA:* +1 🎫 HotPass`
+        }
 
-        await m.react('✨')
-        let win = `> ✅ *¡𝗘𝗫𝗖𝗘𝗟𝗘𝗡𝗧𝗘!*\n\n`
-        win += `> Has demostrado una gran agilidad mental.\n`
-        win += `> 🎯 *Respuesta:* ${game.text}\n\n`
-        win += `🎁 *𝗕𝗢𝗧𝗜𝗡 𝗣𝗥𝗘𝗠𝗜𝗨𝗠:* \n`
-        win += `> ⚡ Kryons: +${ganKryons}\n`
-        win += `> 🪙 Coins: +${ganCoins}\n`
-        win += `> 💎 Diamantes: +${ganDiamonds}`
+        salasAcertijo.delete(id)
+        cooldowns.set(id, Date.now()) // Cooldown tras ganar
+        await m.react('🎉')
 
-        return m.reply(win, null, { mentions: [m.sender] })
+        let win = `✨ *¡MENTE BRILLANTE!*\n\n`
+        win += `> 🎯 *Respuesta:* ${game.text}\n`
+        win += `> *Ganancia:* ${ganCoins.toLocaleString()} 🪙 y ${ganDiamonds} 💎\n`
+        win += `> *Racha:* ${user.racha} 🔥${bonus}`
+
+        await m.reply(win)
+        await saveDatabase()
     } else {
-        clearTimeout(game.timer)
-        salasAcertijo.delete(m.sender)
+        user.racha = 0
+        salasAcertijo.delete(id)
+        cooldowns.set(id, Date.now()) // Cooldown tras perder
         await m.react('❌')
-        return m.reply(`> 🚫 *𝗜𝗡𝗖𝗢𝗥𝗥𝗘𝗖𝗧𝗢*\n\n> Esa no era la respuesta, corazón. La correcta era: **${game.text}**\n> Has perdido tu oportunidad.`)
+        return m.reply(`> 🚫 *𝗜𝗡𝗖𝗢𝗥𝗥𝗘𝗖𝗧𝗢*\n\n> La respuesta era: **${game.text}**\n> Tu racha 🔥 se ha extinguido, corazón.`)
     }
+    return true
 }
 
 handler.help = ['acertijo']
-handler.tags = ['premium']
-handler.command = ['acertijo', 'pacertijo']
+handler.tags = ['game']
+handler.command = /^(acertijo|puzzle|adivinanza)$/i
 
 export default handler

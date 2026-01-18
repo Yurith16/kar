@@ -1,4 +1,5 @@
-import { premiumStyles } from '../lib/styles.js'
+import { saveDatabase } from '../lib/db.js'
+import { checkReg } from '../lib/checkReg.js'
 
 const opciones = {
     'piedra': { emoji: '🪨', vence: 'tijera' },
@@ -6,56 +7,73 @@ const opciones = {
     'tijera': { emoji: '✂️', vence: 'papel' }
 }
 
+const cooldowns = new Map()
+
 let handler = async (m, { conn, text, usedPrefix, command }) => {
     let user = global.db.data.users[m.sender]
-    if (!user.premium) return m.reply("> 💎 *ACCESO PREMIUM*\n\n> Solo mis usuarios Élite pueden jugar conmigo, cielo.")
+    let id = m.sender
+
+    if (await checkReg(m, user)) return
+
+    // --- SISTEMA DE COOLDOWN ---
+    let time = cooldowns.get(id) || 0
+    if (Date.now() - time < 30000) {
+        let wait = Math.ceil((30000 - (Date.now() - time)) / 1000)
+        return m.reply(`> ⏳ *DESPACIO:* Ya jugamos hace poco, cielo. Espera **${wait}s** para el siguiente duelo.`)
+    }
 
     let input = text.trim().toLowerCase()
-    let s = premiumStyles[user.prefStyle] || (user.premium ? premiumStyles["luxury"] : null)
 
     if (!input || !opciones[input]) {
-        return m.reply(`🎮 *DUELO CON KARBOT*\n\n> ¿Qué vas a elegir hoy? *Piedra, papel o tijera*.\n> Ejemplo: \`${usedPrefix + command} papel\``)
+        return m.reply(`🎮 *DUELO CON KARBOT*\n\n> Elige tu arma: *Piedra, papel o tijera*.\n\n_Ejemplo: \`${usedPrefix + command} piedra\`_`)
     }
 
     const botMove = Object.keys(opciones)[Math.floor(Math.random() * 3)]
     let res = input === botMove ? 'tie' : (opciones[input].vence === botMove ? 'win' : 'lose')
 
-    // Valores variables para toque humano
-    let ganK = Math.floor(Math.random() * 10) + 10 // 10-20
-    let ganC = Math.floor(Math.random() * 500) + 400 // 400-900
-    let ganE = Math.floor(Math.random() * 200) + 300 // 300-500
-    let expLost = Math.floor(Math.random() * 100) + 150 // 150-250
+    // Valores para la recompensa 📈
+    let ganCoins = Math.floor(Math.random() * (1200 - 800 + 1)) + 800
+    let ganExp = Math.floor(Math.random() * 300) + 200
+    let lossExp = Math.floor(Math.random() * 150) + 100
 
-    let txt = s ? `${s.top}\n\n` : ''
-    txt += `🕹️ *Duelo:* ${input.toUpperCase()} vs ${botMove.toUpperCase()}\n`
-    txt += `> ${opciones[input].emoji} (Tú) - ${opciones[botMove].emoji} (KarBot)\n\n`
+    let txt = `🕹️ *𝗗𝗨𝗘𝗟𝗢 𝗗𝗘 𝗘𝗟𝗘𝗚𝗔𝗡𝗖𝗜𝗔* 🕹️\n\n`
+    txt += `> 👤 *Tú:* ${opciones[input].emoji} (${input.toUpperCase()})\n`
+    txt += `> 🫦 *KarBot:* ${opciones[botMove].emoji} (${botMove.toUpperCase()})\n\n`
 
     if (res === 'tie') {
-        user.kryons += 5; user.coin += 150
-        txt += `🤝 *¡Empate!* Casi me lees la mente, @${m.sender.split('@')[0]}. Toma algo por el esfuerzo.\n`
-        txt += `> 🎁 +5 Kryons | +150 Coins`
+        user.coin = (user.coin || 0) + 200
+        txt += `🤝 *¡EMPATE!* \n`
+        txt += `Casi me ganas, amor. Toma **200 Coins** por el esfuerzo.`
         await m.react('🤝')
     } else if (res === 'win') {
-        user.kryons += ganK; user.coin += ganC; user.diamond += 1; user.exp += ganE
-        txt += `🎉 *¡Increíble!* Me has ganado esta vez... aquí tienes tus **${ganC}** coins y **${ganE}** de exp por tu astucia. ✨\n\n`
-        txt += `🎁 *BOTÍN GANADO:* \n`
-        txt += `> ⚡ +${ganK} Kryons | 💎 +1 Diamante\n`
-        txt += `> 🪙 +${ganC} Coins | ✨ +${ganE} EXP`
+        user.coin = (user.coin || 0) + ganCoins
+        user.exp = (user.exp || 0) + ganExp
+        user.diamond = (user.diamond || 0) + 1
+        
+        txt += `🎉 *¡VAYA, ME HAS VENCIDO!* \n`
+        txt += `Me has ganado con astucia. Disfruta tu botín, cielo.\n\n`
+        txt += `🎁 *RECOMPENSAS:* \n`
+        txt += `> 🪙 +${ganCoins.toLocaleString()} Coins\n`
+        txt += `> ✨ +${ganExp} EXP\n`
+        txt += `> 💎 +1 Diamante`
         await m.react('✨')
     } else {
-        user.exp = Math.max(0, (user.exp || 0) - expLost)
-        txt += `💀 *¡AJAJAJ TE GANÉ!* Lo siento, corazón, pero te he robado **${expLost}** de tu exp por confiarte demasiado. 💋\n`
-        txt += `> 📉 Penalización: -${expLost} EXP`
+        user.exp = Math.max(0, (user.exp || 0) - lossExp)
+        txt += `💀 *¡TE HE DERROTADO!* \n`
+        txt += `No deberías confiarte tanto frente a mí, corazón. 💋\n\n`
+        txt += `📉 *PENALIZACIÓN:* \n`
+        txt += `> -${lossExp} EXP`
         await m.react('❌')
     }
 
-    if (s) txt += `\n\n${s.footer}`
-    return conn.sendMessage(m.chat, { text: txt, mentions: [m.sender] }, { quoted: m })
+    // Activar cooldown y guardar
+    cooldowns.set(id, Date.now())
+    await m.reply(txt)
+    await saveDatabase()
 }
 
 handler.help = ['ppt']
-handler.tags = ['premium']
+handler.tags = ['game']
 handler.command = /^(ppt|juego)$/i
-handler.group = true
 
 export default handler

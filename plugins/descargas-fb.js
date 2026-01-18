@@ -63,7 +63,7 @@ let handler = async (m, { conn, args, text, usedPrefix, command }) => {
   }
 }
 
-handler.help = ['fb', "fbaudio"]
+handler.help = ['fb + url (facebook)', "fbaudio + url (facebook)"]
 handler.tags = ['downloader']
 handler.command = ['fb', 'fbaudio']
 handler.group = true

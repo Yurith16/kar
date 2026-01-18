@@ -1,43 +1,37 @@
 import axios from 'axios';
 import fetch from 'node-fetch';
+import { verificarSaldoNSFW, procesarPagoNSFW } from '../lib/nsfw-pago.js';
+import { checkReg } from '../lib/checkReg.js';
 
 let handler = async (m, { command, conn, usedPrefix }) => {
-    // 1. Verificación de Registro y Chat
     let chat = global.db.data.chats[m.chat];
     let user = global.db.data.users[m.sender];
-    const costo = 5; // Costo en diamantes por cada imagen NSFW
 
-    if (!user.registered) return m.reply(`❌ Debes registrarte primero\nUsa: ${usedPrefix}reg nombre | edad | género`);
+    // 1. Verificación de Registro (Estilo KarBot)
+    if (await checkReg(m, user)) return;
 
+    // 2. Verificación NSFW
     if (!chat.nsfw) {
         await conn.sendMessage(m.chat, { react: { text: '🔞', key: m.key } });
-        return m.reply(`╭━━━〔 🔞 𝙽𝚂𝙵𝚆 𝙳𝙴𝚂𝙰𝙲𝚃𝙸𝚅𝙰𝙳𝙾 〕━━━⬣\n║\n║ ⚠️ El burdel está cerrado por ahora.\n║ 𝙰𝚌𝚝í𝚟𝚊𝚕𝚘 𝚌𝚘𝚗: *${usedPrefix}on nsfw*\n║\n╰━━━━━━━━━━━━━━━━━━━━━━⬣`);
+        return m.reply(`> 🔞 *𝙽𝚂𝙵𝚆 𝙳𝙴𝚂𝙰𝙲𝚃𝙸𝚅𝙰𝙳𝙾*\n> 🌿 El burdel está cerrado por ahora.\n> 🔥 Actívalo con: *${usedPrefix}on nsfw*`);
     }
-
-    // 2. Verificación de Economía (Diamantes)
-    if (user.diamond < costo) {
-        await conn.sendMessage(m.chat, { react: { text: '📉', key: m.key } });
-        return m.reply(`❌ *Diamantes insuficientes*\n\nNecesitas *${costo} Diamantes* para ver este contenido. \nTu balance: *${user.diamond}*`);
-    }
-
-    await conn.sendMessage(m.chat, { react: { text: '🥵', key: m.key } });
-
-    let url;
-    const frases = [
-        "🔥 Aquí tienes algo para calmar la sed...",
-        "💦 Uff... esto se puso caliente de repente.",
-        "😏 Justo lo que estabas buscando, ¿verdad?",
-        "🫦 Una dosis de placer directo a tu chat...",
-        "👀 Espero que estés solo viendo esto...",
-        "🔥 No me hago responsable si alguien te atrapa mirando esto."
-    ];
-    let caption = `_${frases[Math.floor(Math.random() * frases.length)]}_\n\n💰 *Pago:* ${costo} Diamantes descontados.`;
 
     try {
+        // 3. Sistema de Pago NSFW (HotPass)
+        const v = verificarSaldoNSFW(m.sender, 'fuerte');
+        if (!v.success) {
+            await conn.sendMessage(m.chat, { react: { text: '🎟️', key: m.key } });
+            return m.reply(v.mensajeError);
+        }
+
+        await conn.sendMessage(m.chat, { react: { text: '🥵', key: m.key } });
+
+        let url;
         let type = command;
         if (command === 'loli') type = 'nsfwloli';
         if (command === 'imglesbi') type = 'imagenlesbians';
 
+        // --- LÓGICA DE OBTENCIÓN DE MEDIA ---
         switch (command) {
             case 'loli':
             case 'yuri':
@@ -58,23 +52,20 @@ let handler = async (m, { command, conn, usedPrefix }) => {
                 break;
 
             case 'trapito':
-                let trap = await fetch(`https://api.waifu.pics/nsfw/trap`);
-                let jsonTrap = await trap.json();
-                url = jsonTrap.url;
+                let trap = await (await fetch(`https://api.waifu.pics/nsfw/trap`)).json();
+                url = trap.url;
                 break;
 
             case 'yaoi':
-                let yaoi = await fetch(`https://nekobot.xyz/api/image?type=yaoi`);
-                let jsonYaoi = await yaoi.json();
-                url = jsonYaoi.message;
+                let yaoi = await (await fetch(`https://nekobot.xyz/api/image?type=yaoi`)).json();
+                url = yaoi.message;
                 break;
 
             case 'yaoi2':
             case 'yuri2':
                 let category = command === 'yaoi2' ? 'yaoi' : 'yuri';
-                let purr = await fetch(`https://purrbot.site/api/img/nsfw/${category}/gif`);
-                let jsonPurr = await purr.json();
-                url = jsonPurr.link;
+                let purr = await (await fetch(`https://purrbot.site/api/img/nsfw/${category}/gif`)).json();
+                url = purr.link;
                 break;
 
             case 'randomxxx':
@@ -85,21 +76,23 @@ let handler = async (m, { command, conn, usedPrefix }) => {
                 break;
         }
 
-        if (!url) throw 'Error';
+        if (!url) throw 'Url no encontrada';
 
-        // 3. Descontar diamantes y enviar
-        user.diamond -= costo;
+        // 4. Procesar el cobro y obtener el mensaje diseñado
+        const pago = procesarPagoNSFW(m.sender, 'fuerte');
 
+        // 5. Envío del mensaje con el caption centralizado
         await conn.sendMessage(m.chat, { 
             image: { url: url }, 
-            caption: caption 
+            caption: pago.caption 
         }, { quoted: m });
         
         await conn.sendMessage(m.chat, { react: { text: '💦', key: m.key } });
 
     } catch (e) {
+        console.error(e);
         await conn.sendMessage(m.chat, { react: { text: '❌', key: m.key } });
-        m.reply('💔 La conexión falló... parece que no quiere que lo veas hoy.');
+        m.reply('> 🥀 La conexión falló... el deseo tendrá que esperar.');
     }
 };
 

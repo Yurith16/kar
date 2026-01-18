@@ -1,104 +1,168 @@
-import { premiumStyles } from '../lib/styles.js'
-
-function toBoldMono(text) {
-    const mapping = {
-        A: "𝗔", B: "𝗕", C: "𝗖", D: "𝗗", E: "𝗘", F: "𝗙", G: "𝗚", H: "𝗛", I: "𝗜", J: "𝗝", K: "𝗞", L: "𝗟", M: "𝗠", 
-        N: "𝗡", O: "𝗢", P: "𝗣", Q: "𝗤", R: "𝗥", S: "𝗦", T: "𝗧", U: "𝗨", V: "𝗩", W: "𝗪", X: "𝗫", Y: "𝗬", Z: "𝗭",
-        a: "𝗮", b: "𝗯", c: "𝗰", d: "𝗱", e: "𝗲", f: "𝗳", g: "𝗴", h: "𝗵", i: "𝗶", j: "𝗷", k: "𝗸", l: "𝗹", m: "𝗺", 
-        n: "𝗻", o: "𝗼", p: "𝗽", q: "𝗾", r: "𝗿", s: "𝘀", t: "𝘁", u: "𝘂", v: "𝘃", w: "𝘄", x: "𝘅", y: "𝘆", z: "𝘇",
-        0: "𝟬", 1: "𝟭", 2: "𝟮", 3: "𝟯", 4: "𝟰", 5: "𝟱", 6: "𝟲", 7: "𝟳", 8: "𝟴", 9: "𝟵"
-    }
-    return text.split('').map(char => mapping[char] || char).join('')
-}
+import { saveDatabase } from '../lib/db.js'
+import { checkReg } from '../lib/checkReg.js'
 
 const triviaData = {
     'cultura': [
-        { q: '¿Cuál es el río más largo del mundo?', a: 'Amazonas', opciones: ['Nilo', 'Amazonas', 'Misisipi', 'Yangtsé', 'Danubio', 'Rhin'] },
-        { q: '¿En qué país se encuentra la Torre de Pisa?', a: 'Italia', opciones: ['Francia', 'España', 'Italia', 'Grecia', 'Portugal', 'Bélgica'] },
-        { q: '¿Quién pintó la "Mona Lisa"?', a: 'Leonardo da Vinci', opciones: ['Van Gogh', 'Picasso', 'Leonardo da Vinci', 'Dalí', 'Rembrandt', 'Monet'] },
-        { q: '¿Cuál es el país más pequeño del mundo?', a: 'Vaticano', opciones: ['Mónaco', 'Vaticano', 'Andorra', 'San Marino', 'Malta', 'Liechtenstein'] },
-        { q: '¿Qué ciudad es conocida como la "Gran Manzana"?', a: 'Nueva York', opciones: ['Chicago', 'Los Ángeles', 'Nueva York', 'Londres', 'París', 'Tokio'] },
-        { q: '¿Cuál es el idioma más hablado del mundo?', a: 'Chino Mandarín', opciones: ['Español', 'Inglés', 'Chino Mandarín', 'Hindi', 'Árabe', 'Ruso'] },
-        { q: '¿Qué país tiene forma de bota?', a: 'Italia', opciones: ['Grecia', 'Italia', 'España', 'México', 'Noruega', 'Japón'] },
-        { q: '¿Quién escribió "Don Quijote de la Mancha"?', a: 'Miguel de Cervantes', opciones: ['Lope de Vega', 'Miguel de Cervantes', 'Gabriel García Márquez', 'Shakespeare', 'Neruda', 'Quevedo'] },
-        { q: '¿Cuál es el océano más grande del mundo?', a: 'Pacífico', opciones: ['Atlántico', 'Índico', 'Ártico', 'Pacífico', 'Antártico', 'Muerto'] },
-        { q: '¿En qué continente se encuentra el desierto del Sahara?', a: 'África', opciones: ['Asia', 'África', 'América', 'Oceanía', 'Europa', 'Antártida'] },
-        { q: '¿Cuál es el animal terrestre más rápido?', a: 'Guepardo', opciones: ['León', 'Tigre', 'Guepardo', 'Caballo', 'Avestruz', 'Gacela'] },
-        { q: '¿Qué país regaló la Estatua de la Libertad a EE.UU.?', a: 'Francia', opciones: ['España', 'Reino Unido', 'Francia', 'Alemania', 'Italia', 'Canadá'] },
-        { q: '¿Cuál es la capital de Japón?', a: 'Tokio', opciones: ['Kioto', 'Osaka', 'Tokio', 'Seúl', 'Pekín', 'Hiroshima'] },
-        { q: '¿Quién es el autor de "La noche estrellada"?', a: 'Vincent van Gogh', opciones: ['Claude Monet', 'Vincent van Gogh', 'Salvador Dalí', 'Picasso', 'Renoir', 'Degas'] },
-        { q: '¿Cuál es el monte más alto del mundo?', a: 'Everest', opciones: ['K2', 'Everest', 'Kilimanjaro', 'Aconcagua', 'Mont Blanc', 'Anapurna'] },
-        { q: '¿Qué instrumento tocaba Sherlock Holmes?', a: 'Violín', opciones: ['Piano', 'Violín', 'Flauta', 'Guitarra', 'Arpa', 'Clarinete'] },
-        { q: '¿Cuál es la moneda oficial de Reino Unido?', a: 'Libra Esterlina', opciones: ['Euro', 'Dólar', 'Libra Esterlina', 'Franco', 'Yen', 'Peso'] },
-        { q: '¿En qué país se originaron los Juegos Olímpicos?', a: 'Grecia', opciones: ['Italia', 'Egipto', 'Grecia', 'Francia', 'China', 'México'] },
-        { q: '¿Qué país es famoso por el Taj Mahal?', a: 'India', opciones: ['Pakistán', 'India', 'Irán', 'Tailandia', 'Egipto', 'Turquía'] },
-        { q: '¿Cuál es el libro más vendido después de la Biblia?', a: 'Don Quijote', opciones: ['Harry Potter', 'El Principito', 'Don Quijote', 'El Código Da Vinci', 'El Señor de los Anillos', 'Cien años de soledad'] }
-    ],
-    'ciencia': [
-        { q: '¿Cuál es la fórmula química del agua?', a: 'H2O', opciones: ['CO2', 'H2O', 'NaCl', 'O2', 'CH4', 'H2SO4'] },
-        { q: '¿Qué planeta es conocido como el "planeta rojo"?', a: 'Marte', opciones: ['Venus', 'Marte', 'Júpiter', 'Saturno', 'Urano', 'Neptuno'] },
-        { q: '¿Cuál es el metal más caro del mundo?', a: 'Rodio', opciones: ['Oro', 'Platino', 'Rodio', 'Paladio', 'Iridio', 'Plata'] },
-        { q: '¿Cuántos huesos tiene el cuerpo humano adulto?', a: '206', opciones: ['206', '210', '195', '200', '208', '215'] },
-        { q: '¿Cuál es la velocidad de la luz aprox?', a: '300,000 km/s', opciones: ['150,000 km/s', '300,000 km/s', '500,000 km/s', '1,000,000 km/s', '200,000 km/s', '450,000 km/s'] },
-        { q: '¿Cuál es el planeta más grande del Sistema Solar?', a: 'Júpiter', opciones: ['Júpiter', 'Saturno', 'Neptuno', 'Tierra', 'Urano', 'Sol'] },
-        { q: '¿Qué gas necesitan las plantas para la fotosíntesis?', a: 'Dióxido de carbono', opciones: ['Oxígeno', 'Dióxido de carbono', 'Nitrógeno', 'Hidrógeno', 'Helio', 'Argón'] },
-        { q: '¿Quién propuso la Teoría de la Relatividad?', a: 'Albert Einstein', opciones: ['Isaac Newton', 'Nikola Tesla', 'Albert Einstein', 'Stephen Hawking', 'Marie Curie', 'Galileo'] },
-        { q: '¿Cuál es el órgano más grande del cuerpo humano?', a: 'Piel', opciones: ['Hígado', 'Corazón', 'Piel', 'Pulmones', 'Cerebro', 'Intestino'] },
-        { q: '¿Qué estudia la Botánica?', a: 'Plantas', opciones: ['Animales', 'Plantas', 'Rocas', 'Estrellas', 'Insectos', 'Hongos'] },
-        { q: '¿Cuál es el símbolo químico del Oro?', a: 'Au', opciones: ['Ag', 'Au', 'Fe', 'Pb', 'Or', 'Pt'] },
-        { q: '¿Cuál es el planeta más cercano al Sol?', a: 'Mercurio', opciones: ['Venus', 'Tierra', 'Mercurio', 'Marte', 'Ceres', 'Plutón'] },
-        { q: '¿Qué parte del ojo detecta el color?', a: 'Conos', opciones: ['Córnea', 'Conos', 'Bastones', 'Iris', 'Pupila', 'Cristalino'] },
-        { q: '¿Qué vitamina obtenemos principalmente del Sol?', a: 'Vitamina D', opciones: ['Vitamina A', 'Vitamina C', 'Vitamina D', 'Vitamina B12', 'Vitamina K', 'Vitamina E'] },
-        { q: '¿Cuál es la unidad básica de la vida?', a: 'Célula', opciones: ['Átomo', 'Célula', 'Molécula', 'Tejido', 'ADN', 'Bacteria'] },
-        { q: '¿Cuál es el animal más grande que ha existido?', a: 'Ballena Azul', opciones: ['Megalodón', 'Dinosaurio Rex', 'Ballena Azul', 'Mamut', 'Elefante', 'Diplodocus'] },
-        { q: '¿Qué inventó Alexander Fleming?', a: 'Penicilina', opciones: ['Bombilla', 'Teléfono', 'Penicilina', 'Vacuna Rabia', 'Radio', 'Motor'] },
-        { q: '¿Cómo se llama la fuerza que nos mantiene en el suelo?', a: 'Gravedad', opciones: ['Magnetismo', 'Fricción', 'Gravedad', 'Inercia', 'Presión', 'Empuje'] },
-        { q: '¿Cuál es el satélite natural de la Tierra?', a: 'Luna', opciones: ['Luna', 'Titán', 'Europa', 'Ganimedes', 'Ío', 'Fobos'] },
-        { q: '¿Cuál es el único mamífero capaz de volar?', a: 'Murciélago', opciones: ['Ardilla voladora', 'Murciélago', 'Pájaro', 'Avestruz', 'Pingüino', 'Delfín'] }
-    ],
-    'historia': [
-        { q: '¿En qué año terminó la Segunda Guerra Mundial?', a: '1945', opciones: ['1940', '1945', '1950', '1939', '1948', '1944'] },
-        { q: '¿Quién fue el primer hombre en pisar la Luna?', a: 'Neil Armstrong', opciones: ['Buzz Aldrin', 'Neil Armstrong', 'Yuri Gagarin', 'Elon Musk', 'Michael Collins', 'John Glenn'] },
-        { q: '¿Qué civilización construyó las pirámides de Giza?', a: 'Egipcia', opciones: ['Maya', 'Azteca', 'Egipcia', 'Griega', 'Romana', 'Inca'] },
-        { q: '¿En qué año se descubrió América?', a: '1492', opciones: ['1492', '1500', '1485', '1510', '1498', '1470'] },
-        { q: '¿Quién fue el primer presidente de EE.UU.?', a: 'George Washington', opciones: ['Lincoln', 'George Washington', 'Jefferson', 'Roosevelt', 'Kennedy', 'Adams'] },
-        { q: '¿En qué país nació Adolf Hitler?', a: 'Austria', opciones: ['Alemania', 'Austria', 'Polonia', 'Hungría', 'Suiza', 'Bélgica'] },
-        { q: '¿Qué famosa reina gobernó Egipto?', a: 'Cleopatra', opciones: ['Nefertiti', 'Cleopatra', 'Isabel I', 'Victoria', 'Catalina', 'Hatshepsut'] },
-        { q: '¿Quién fue el líder de la Revolución Rusa?', a: 'Lenin', opciones: ['Stalin', 'Lenin', 'Trotsky', 'Putin', 'Marx', 'Zar Nicolás'] },
-        { q: '¿Qué muro dividió una ciudad alemana hasta 1989?', a: 'Muro de Berlín', opciones: ['Muro de Berlín', 'Muro de China', 'Muro de Adriano', 'Muro de Versalles', 'Muro del Oeste', 'Muro de Frankfurt'] },
-        { q: '¿En qué país ocurrió la Revolución Industrial?', a: 'Reino Unido', opciones: ['EE.UU.', 'Francia', 'Alemania', 'Reino Unido', 'Italia', 'Japón'] },
-        { q: '¿Quién fue conocido como "El Libertador" en América?', a: 'Simón Bolívar', opciones: ['San Martín', 'Simón Bolívar', 'Miguel Hidalgo', 'Artigas', 'Sucre', 'O\'Higgins'] },
-        { q: '¿Qué imperio conquistó gran parte de Europa e Italia?', a: 'Imperio Romano', opciones: ['Imperio Mongol', 'Imperio Romano', 'Imperio Otomano', 'Imperio Británico', 'Imperio Galo', 'Imperio Griego'] },
-        { q: '¿En qué ciudad mataron a Julio César?', a: 'Roma', opciones: ['Atenas', 'Roma', 'Cartago', 'Constantinopla', 'Pompeya', 'Alejandría'] },
-        { q: '¿Quién fue la primera mujer en ganar un Premio Nobel?', a: 'Marie Curie', opciones: ['Teresa de Calcuta', 'Marie Curie', 'Rosalind Franklin', 'Ada Lovelace', 'Frida Kahlo', 'Amelia Earhart'] },
-        { q: '¿Qué barco se hundió en 1912 tras chocar con un iceberg?', a: 'Titanic', opciones: ['Britannic', 'Olympic', 'Titanic', 'Lusitania', 'Santa María', 'Victory'] },
-        { q: '¿Cuál era la antigua capital del Imperio Inca?', a: 'Cusco', opciones: ['Lima', 'Quito', 'Cusco', 'Machu Picchu', 'Bogotá', 'La Paz'] },
-        { q: '¿Quién escribió el "Diario" más famoso de la 2da Guerra?', a: 'Ana Frank', opciones: ['Ana Frank', 'Rosa Parks', 'Isabel II', 'Eva Perón', 'Virginia Woolf', 'Marie Curie'] },
-        { q: '¿Qué guerra duró desde 1914 hasta 1918?', a: 'Primera Guerra Mundial', opciones: ['Guerra de los 100 años', 'Guerra Civil', 'Primera Guerra Mundial', 'Segunda Guerra Mundial', 'Guerra Fría', 'Guerra de Vietnam'] },
-        { q: '¿Quién liberó a los esclavos en EE.UU.?', a: 'Abraham Lincoln', opciones: ['George Washington', 'Abraham Lincoln', 'Martin Luther King', 'Obama', 'Jefferson', 'Grant'] },
-        { q: '¿Qué civilización usaba jeroglíficos?', a: 'Egipcia', opciones: ['China', 'Egipcia', 'Romana', 'Vikinga', 'Fenicia', 'Gallega'] }
-    ]
+    { q: '¿Cuál es el río más largo del mundo?', a: 'Amazonas', opciones: ['Nilo', 'Amazonas', 'Misisipi', 'Yangtsé', 'Danubio', 'Rhin'] },
+    { q: '¿En qué país se encuentra la Torre de Pisa?', a: 'Italia', opciones: ['Francia', 'España', 'Italia', 'Grecia', 'Portugal', 'Bélgica'] },
+    { q: '¿Quién pintó la "Mona Lisa"?', a: 'Leonardo da Vinci', opciones: ['Van Gogh', 'Picasso', 'Leonardo da Vinci', 'Dalí', 'Rembrandt', 'Monet'] },
+    { q: '¿Cuál es el país más pequeño del mundo?', a: 'Vaticano', opciones: ['Mónaco', 'Vaticano', 'Andorra', 'San Marino', 'Malta', 'Liechtenstein'] },
+    { q: '¿Qué ciudad es conocida como la "Gran Manzana"?', a: 'Nueva York', opciones: ['Chicago', 'Los Ángeles', 'Nueva York', 'Londres', 'París', 'Tokio'] },
+    { q: '¿Cuál es el idioma más hablado del mundo?', a: 'Chino Mandarín', opciones: ['Español', 'Inglés', 'Chino Mandarín', 'Hindi', 'Árabe', 'Ruso'] },
+    { q: '¿Quién escribió "Cien años de soledad"?', a: 'Gabriel García Márquez', opciones: ['Vargas Llosa', 'Gabriel García Márquez', 'Isabel Allende', 'Neruda', 'Borges', 'Cortázar'] },
+    { q: '¿En qué país se originaron los Juegos Olímpicos?', a: 'Grecia', opciones: ['Italia', 'Grecia', 'Egipto', 'Francia', 'China', 'México'] },
+    { q: '¿Qué país tiene forma de bota?', a: 'Italia', opciones: ['Grecia', 'Italia', 'España', 'México', 'Noruega', 'Japón'] },
+    { q: '¿Cuál es la moneda oficial de Japón?', a: 'Yen', opciones: ['Won', 'Yuan', 'Yen', 'Dólar', 'Euro', 'Peso'] },
+    { q: '¿Cuál es el océano más grande del mundo?', a: 'Pacífico', opciones: ['Atlántico', 'Índico', 'Ártico', 'Pacífico', 'Antártico', 'Muerto'] },
+    { q: '¿Quién es el autor de "La noche estrellada"?', a: 'Vincent van Gogh', opciones: ['Claude Monet', 'Vincent van Gogh', 'Salvador Dalí', 'Picasso', 'Renoir', 'Degas'] },
+    { q: '¿En qué continente se encuentra el desierto del Sahara?', a: 'África', opciones: ['Asia', 'África', 'América', 'Oceanía', 'Europa', 'Antártida'] },
+    { q: '¿Cuál es la capital de Francia?', a: 'París', opciones: ['Lyon', 'Marsella', 'París', 'Burdeos', 'Niza', 'Estrasburgo'] },
+    { q: '¿Qué país regaló la Estatua de la Libertad a EE.UU.?', a: 'Francia', opciones: ['España', 'Reino Unido', 'Francia', 'Alemania', 'Italia', 'Canadá'] }
+],
+    'peliculas': [
+    { q: '¿Quién dirigió "Oppenheimer"?', a: 'Christopher Nolan', opciones: ['Spielberg', 'Christopher Nolan', 'Scorsese', 'Tarantino', 'James Cameron', 'Greta Gerwig'] },
+    { q: '¿Qué película ganó el primer Óscar de la historia?', a: 'Wings', opciones: ['Wings', 'Metrópolis', 'Sunrise', 'The Circus', 'King Kong', 'Gone with the Wind'] },
+    { q: '¿Cómo se llama el reino de Black Panther?', a: 'Wakanda', opciones: ['Asgard', 'Wakanda', 'Talokan', 'Sokovia', 'Latveria', 'Atlantis'] },
+    { q: '¿Quién interpretó a Jack en "Titanic"?', a: 'Leonardo DiCaprio', opciones: ['Brad Pitt', 'Leonardo DiCaprio', 'Tom Cruise', 'Johnny Depp', 'Matt Damon', 'Will Smith'] },
+    { q: '¿Cuál es la película más taquillera de la historia?', a: 'Avatar', opciones: ['Avengers: Endgame', 'Titanic', 'Avatar', 'Star Wars VII', 'Spider-Man: No Way Home', 'The Lion King'] },
+    { q: '¿Cómo se llama el elfo doméstico de Harry Potter?', a: 'Dobby', opciones: ['Kreacher', 'Dobby', 'Winky', 'Hokey', 'Griphook', 'Grawp'] },
+    { q: '¿Qué actor hace la voz de Woody en Toy Story?', a: 'Tom Hanks', opciones: ['Tim Allen', 'Tom Hanks', 'Robin Williams', 'Jim Carrey', 'Will Ferrell', 'Billy Crystal'] },
+    { q: '¿Quién dirigió la película "Parásitos"?', a: 'Bong Joon-ho', opciones: ['Park Chan-wook', 'Bong Joon-ho', 'Kim Jee-woon', 'Ang Lee', 'Akira Kurosawa', 'Hayao Miyazaki'] },
+    { q: '¿Cuál es el nombre del villano en "El silencio de los corderos"?', a: 'Hannibal Lecter', opciones: ['Norman Bates', 'Hannibal Lecter', 'Pennywise', 'Freddy Krueger', 'Jason Voorhees', 'Ghostface'] },
+    { q: '¿Qué película de Disney tiene a una protagonista llamada Mérida?', a: 'Valiente', opciones: ['Enredados', 'Valiente', 'Frozen', 'Moana', 'Mulan', 'Pocahontas'] },
+    { q: '¿Cómo se llama la inteligencia artificial de Iron Man?', a: 'J.A.R.V.I.S.', opciones: ['SIRI', 'ALEXA', 'J.A.R.V.I.S.', 'HAL 9000', 'FRIDAY', 'EDITH'] },
+    { q: '¿Cuál es la primera película del universo de Star Wars?', a: 'A New Hope', opciones: ['The Phantom Menace', 'A New Hope', 'The Empire Strikes Back', 'Revenge of the Sith', 'The Force Awakens', 'Rogue One'] },
+    { q: '¿Quién interpretó al Joker en "The Dark Knight"?', a: 'Heath Ledger', opciones: ['Joaquin Phoenix', 'Jack Nicholson', 'Heath Ledger', 'Jared Leto', 'Barry Keoghan', 'Mark Hamill'] },
+    { q: '¿En qué ciudad vive Batman?', a: 'Gotham', opciones: ['Metrópolis', 'Gotham', 'Central City', 'Star City', 'Nueva York', 'Chicago'] },
+    { q: '¿Qué película musical trata sobre una aspirante a actriz y un músico de jazz?', a: 'La La Land', opciones: ['Chicago', 'La La Land', 'Grease', 'Moulin Rouge', 'Sing', 'Cats'] }
+],
+    'comidas': [
+    { q: '¿Cuál es el ingrediente principal del guacamole?', a: 'Aguacate', opciones: ['Tomate', 'Aguacate', 'Cebolla', 'Limón', 'Cilantro', 'Chile'] },
+    { q: '¿De qué país es originaria la pizza?', a: 'Italia', opciones: ['EE.UU.', 'Grecia', 'Francia', 'Italia', 'España', 'Turquía'] },
+    { q: '¿Qué tipo de pasta tiene forma de cuerdas largas?', a: 'Espagueti', opciones: ['Macarrones', 'Espagueti', 'Penne', 'Fusilli', 'Ravioli', 'Lasaña'] },
+    { q: '¿Cuál es el destilado base del Mojito?', a: 'Ron', opciones: ['Tequila', 'Vodka', 'Ron', 'Ginebra', 'Whisky', 'Pisco'] },
+    { q: '¿Qué especia le da al curry su color amarillo?', a: 'Cúrcuma', opciones: ['Canela', 'Pimentón', 'Cúrcuma', 'Comino', 'Pimienta', 'Jengibre'] },
+    { q: '¿Cómo se llama el arroz japonés usado para el sushi?', a: 'Koshihikari', opciones: ['Basmati', 'Jazmín', 'Koshihikari', 'Arborio', 'Integral', 'Largo'] },
+    { q: '¿Qué fruta es conocida como la "reina de las frutas" pero huele mal?', a: 'Durian', opciones: ['Mango', 'Durian', 'Papaya', 'Kiwi', 'Lichi', 'Granada'] },
+    { q: '¿De qué animal proviene la carne de "Wagyu"?', a: 'Vaca', opciones: ['Cerdo', 'Vaca', 'Cordero', 'Pato', 'Búfalo', 'Ciervo'] },
+    { q: '¿Qué país consume más café por persona?', a: 'Finlandia', opciones: ['Brasil', 'Colombia', 'Finlandia', 'Italia', 'EE.UU.', 'Etiopía'] },
+    { q: '¿Qué es el "Kimchi"?', a: 'Col fermentada', opciones: ['Sopa de pescado', 'Col fermentada', 'Pan de arroz', 'Té dulce', 'Carne cruda', 'Postre frito'] },
+    { q: '¿Cuál es el ingrediente principal del Hummus?', a: 'Garbanzos', opciones: ['Lentejas', 'Frijoles', 'Garbanzos', 'Habas', 'Guisantes', 'Soja'] },
+    { q: '¿Qué hongo es considerado el "diamante de la cocina"?', a: 'Trufa negra', opciones: ['Champiñón', 'Portobello', 'Trufa negra', 'Shiitake', 'Níscalo', 'Boleto'] },
+    { q: '¿De qué país es originario el queso Roquefort?', a: 'Francia', opciones: ['Italia', 'Suiza', 'Francia', 'España', 'Holanda', 'Grecia'] },
+    { q: '¿Qué tipo de carne se usa tradicionalmente en un "Ceviche"?', a: 'Pescado blanco', opciones: ['Carne de res', 'Pollo', 'Pescado blanco', 'Cerdo', 'Cordero', 'Pato'] },
+    { q: '¿Cuál es la base de la sopa japonesa "Ramen"?', a: 'Caldo con fideos', opciones: ['Sopa de arroz', 'Caldo con fideos', 'Puré de verduras', 'Leche de coco', 'Agua con algas', 'Caldo de miso solo'] },
+    { q: '¿Qué fruta se usa para hacer la sidra?', a: 'Manzana', opciones: ['Uva', 'Pera', 'Manzana', 'Naranja', 'Cereza', 'Ciruela'] },
+    { q: '¿Qué país inventó las papas fritas (French Fries)?', a: 'Bélgica', opciones: ['Francia', 'EE.UU.', 'Bélgica', 'Inglaterra', 'Alemania', 'Canadá'] },
+    { q: '¿Qué ingrediente hace que el pan suba?', a: 'Levadura', opciones: ['Azúcar', 'Sal', 'Levadura', 'Huevos', 'Mantequilla', 'Leche'] },
+    { q: '¿Cuál es el plato nacional de España?', a: 'Paella', opciones: ['Tortilla', 'Paella', 'Gazpacho', 'Cocido', 'Jamón', 'Churros'] },
+    { q: '¿De qué está hecha la Tofu?', a: 'Leche de soja', opciones: ['Queso de cabra', 'Leche de soja', 'Claras de huevo', 'Harina de arroz', 'Maíz prensado', 'Gelatina animal'] }
+],
+   'biologia': [
+    { q: '¿Cuál es el órgano más grande del cuerpo humano?', a: 'Piel', opciones: ['Hígado', 'Piel', 'Corazón', 'Pulmones', 'Cerebro', 'Intestino'] },
+    { q: '¿Cuántos corazones tiene un pulpo?', a: '3', opciones: ['1', '2', '3', '4', '5', '8'] },
+    { q: '¿Qué parte de la célula contiene el ADN?', a: 'Núcleo', opciones: ['Mitocondria', 'Núcleo', 'Ribosoma', 'Citoplasma', 'Membrana', 'Aparato de Golgi'] },
+    { q: '¿Cuál es el único mamífero capaz de volar?', a: 'Murciélago', opciones: ['Ardilla voladora', 'Murciélago', 'Pájaro', 'Avestruz', 'Pingüino', 'Delfín'] },
+    { q: '¿Cómo se llama el proceso por el que las plantas hacen comida?', a: 'Fotosíntesis', opciones: ['Respiración', 'Fotosíntesis', 'Osmosis', 'Mitosis', 'Digestión', 'Transpiración'] },
+    { q: '¿Cuál es el único mamífero que pone huevos?', a: 'Ornitorrinco', opciones: ['Equidna', 'Ornitorrinco', 'Delfín', 'Murciélago', 'Ballena', 'Canguro'] },
+    { q: '¿Cuántos pares de cromosomas tiene un humano?', a: '23', opciones: ['22', '23', '24', '46', '48', '12'] },
+    { q: '¿Qué tipo de sangre es el "donante universal"?', a: 'O-', opciones: ['A+', 'B-', 'AB+', 'O+', 'O-', 'AB-'] },
+    { q: '¿Cuál es el hueso más pequeño del cuerpo?', a: 'Estribo', opciones: ['Fémur', 'Radio', 'Estribo', 'Falange', 'Rótula', 'Atlas'] },
+    { q: '¿Qué animal tiene la mordida más fuerte del mundo?', a: 'Cocodrilo del Nilo', opciones: ['Tiburón Blanco', 'León', 'Hiena', 'Cocodrilo del Nilo', 'Oso Polar', 'Hipopótamo'] },
+    { q: '¿Cuál es la función de los glóbulos rojos?', a: 'Transportar oxígeno', opciones: ['Defender el cuerpo', 'Coagular sangre', 'Transportar oxígeno', 'Producir energía', 'Eliminar toxinas', 'Mover músculos'] },
+    { q: '¿Qué animal terrestre es el más rápido del mundo?', a: 'Guepardo', opciones: ['León', 'Caballo', 'Guepardo', 'Gacela', 'Tigre', 'Avestruz'] },
+    { q: '¿Cuál es el animal más grande que ha existido?', a: 'Ballena Azul', opciones: ['Megalodón', 'Dinosaurio Rex', 'Ballena Azul', 'Mamut', 'Elefante', 'Diplodocus'] },
+    { q: '¿Qué parte del ojo detecta el color?', a: 'Conos', opciones: ['Córnea', 'Conos', 'Bastones', 'Iris', 'Pupila', 'Cristalino'] },
+    { q: '¿Qué vitamina obtenemos principalmente del Sol?', a: 'Vitamina D', opciones: ['Vitamina A', 'Vitamina C', 'Vitamina D', 'Vitamina B12', 'Vitamina K', 'Vitamina E'] },
+    { q: '¿Cuál es la unidad básica de la vida?', a: 'Célula', opciones: ['Átomo', 'Célula', 'Molécula', 'Tejido', 'ADN', 'Bacteria'] },
+    { q: '¿Cómo se llama la proteína que da color a la piel?', a: 'Melanina', opciones: ['Queratina', 'Melanina', 'Colágeno', 'Hemoglobina', 'Insulina', 'Miosina'] },
+    { q: '¿Qué animal tiene la memoria más larga?', a: 'Elefante', opciones: ['Delfín', 'Elefante', 'Perro', 'Chimpancé', 'Loro', 'Gato'] },
+    { q: '¿Cuál es el músculo más fuerte del cuerpo (por tamaño)?', a: 'Masetero', opciones: ['Glúteo', 'Lengua', 'Masetero', 'Bíceps', 'Corazón', 'Cuádriceps'] },
+    { q: '¿Qué gas absorben las plantas y liberan los humanos?', a: 'Dióxido de carbono', opciones: ['Oxígeno', 'Nitrógeno', 'Dióxido de carbono', 'Metano', 'Hidrógeno', 'Argón'] }
+],
+    'quimica': [
+    { q: '¿Cuál es el símbolo químico del Oro?', a: 'Au', opciones: ['Ag', 'Au', 'Fe', 'Or', 'Pb', 'Pt'] },
+    { q: '¿Cuál es el elemento más abundante en el universo?', a: 'Hidrógeno', opciones: ['Oxígeno', 'Helio', 'Hidrógeno', 'Carbono', 'Nitrógeno', 'Hierro'] },
+    { q: '¿Cuál es la fórmula química del agua?', a: 'H2O', opciones: ['HO2', 'H2O', 'H2O2', 'OH2', 'O2H', 'H3O'] },
+    { q: '¿Qué gas expulsamos los humanos al respirar?', a: 'Dióxido de carbono', opciones: ['Oxígeno', 'Nitrógeno', 'Dióxido de carbono', 'Metano', 'Hidrógeno', 'Argón'] },
+    { q: '¿Cuál es el pH del agua pura?', a: '7', opciones: ['0', '1', '5', '7', '10', '14'] },
+    { q: '¿Quién es considerado el creador de la tabla periódica?', a: 'Dmitri Mendeléyev', opciones: ['Marie Curie', 'Dmitri Mendeléyev', 'Antoine Lavoisier', 'John Dalton', 'Niels Bohr', 'Alfred Nobel'] },
+    { q: '¿Qué elemento tiene el símbolo "K"?', a: 'Potasio', opciones: ['Kriptón', 'Potasio', 'Calcio', 'Hierro', 'Fósforo', 'Cobre'] },
+    { q: '¿Cuál es el único metal que es líquido a temperatura ambiente?', a: 'Mercurio', opciones: ['Plata', 'Cobre', 'Plomo', 'Mercurio', 'Galio', 'Magnesio'] },
+    { q: '¿Qué gas se utiliza para inflar globos que flotan?', a: 'Helio', opciones: ['Oxígeno', 'Nitrógeno', 'Helio', 'Hidrógeno', 'Neón', 'Aire'] },
+    { q: '¿Cuál es el componente principal del diamante?', a: 'Carbono', opciones: ['Silicio', 'Carbono', 'Oxígeno', 'Hierro', 'Calcio', 'Nitrógeno'] },
+    { q: '¿Cómo se llama la mezcla de cobre y estaño?', a: 'Bronce', opciones: ['Acero', 'Latón', 'Bronce', 'Oro blanco', 'Amalgama', 'Soldadura'] },
+    { q: '¿Cuál es el símbolo químico del Hierro?', a: 'Fe', opciones: ['Hi', 'He', 'Ir', 'Fe', 'F', 'H'] },
+    { q: '¿Qué tipo de enlace ocurre cuando se comparten electrones?', a: 'Covalente', opciones: ['Iónico', 'Covalente', 'Metálico', 'De hidrógeno', 'De Van der Waals', 'Polar'] },
+    { q: '¿Cuál es la fórmula de la sal de mesa común?', a: 'NaCl', opciones: ['KCl', 'NaOH', 'NaCl', 'HCl', 'NaHCO3', 'MgCl2'] },
+    { q: '¿Qué elemento es esencial para la combustión?', a: 'Oxígeno', opciones: ['Nitrógeno', 'Helio', 'Oxígeno', 'Carbono', 'Argón', 'Hidrógeno'] },
+    { q: '¿Cuál es el gas más abundante en la atmósfera terrestre?', a: 'Nitrógeno', opciones: ['Oxígeno', 'Nitrógeno', 'Dióxido de carbono', 'Argón', 'Neón', 'Helio'] },
+    { q: '¿Cómo se llaman las partículas con carga negativa en un átomo?', a: 'Electrones', opciones: ['Protones', 'Neutrones', 'Electrones', 'Positrones', 'Quarks', 'Fotones'] },
+    { q: '¿Qué ácido se encuentra en el estómago humano?', a: 'Ácido clorhídrico', opciones: ['Ácido sulfúrico', 'Ácido nítrico', 'Ácido clorhídrico', 'Ácido acético', 'Ácido cítrico', 'Ácido láctico'] },
+    { q: '¿Cuál es el símbolo químico de la Plata?', a: 'Ag', opciones: ['Pl', 'Au', 'Ag', 'Pt', 'Si', 'Al'] },
+    { q: '¿Qué proceso convierte un líquido en gas?', a: 'Evaporación', opciones: ['Condensación', 'Fusión', 'Evaporación', 'Solidificación', 'Sublimación', 'Filtración'] }
+],
+    'politica': [
+    { q: '¿Dónde está la sede de la ONU?', a: 'Nueva York', opciones: ['Ginebra', 'París', 'Nueva York', 'Washington', 'Londres', 'Bruselas'] },
+    { q: '¿Quién es el autor de "El Manifiesto Comunista"?', a: 'Karl Marx', opciones: ['Lenin', 'Karl Marx', 'Stalin', 'Mao Zedong', 'Adam Smith', 'Engels'] },
+    { q: '¿Qué país tiene un sistema de monarquía absoluta hoy?', a: 'Arabia Saudita', opciones: ['España', 'Reino Unido', 'Japón', 'Arabia Saudita', 'Marruecos', 'Noruega'] },
+    { q: '¿Cómo se llama el sistema de voto indirecto en EE.UU.?', a: 'Colegio Electoral', opciones: ['Voto directo', 'Colegio Electoral', 'Voto censitario', 'Parlamentarismo', 'Bicameralismo', 'Referéndum'] },
+    { q: '¿Qué ideología busca el libre mercado y mínima intervención estatal?', a: 'Libertarismo', opciones: ['Socialismo', 'Comunismo', 'Libertarismo', 'Fascismo', 'Anarquismo', 'Conservadurismo'] },
+    { q: '¿En qué ciudad se firmó el tratado de la Unión Europea?', a: 'Maastricht', opciones: ['Bruselas', 'París', 'Maastricht', 'Berlín', 'Roma', 'Lisboa'] },
+    { q: '¿Quién fue conocida como la "Dama de Hierro"?', a: 'Margaret Thatcher', opciones: ['Angela Merkel', 'Margaret Thatcher', 'Indira Gandhi', 'Theresa May', 'Hillary Clinton', 'Isabel II'] },
+    { q: '¿Qué significa la sigla PIB?', a: 'Producto Interno Bruto', opciones: ['Precio Interno Base', 'Producto Interno Bruto', 'País Industrializado Bajo', 'Poder Interno Bruto', 'Producción Individual Base', 'Precio de Inversión Bruta'] },
+    { q: '¿Qué país es el miembro más reciente de la OTAN (2024)?', a: 'Suecia', opciones: ['Finlandia', 'Ucrania', 'Suecia', 'Islandia', 'Turquía', 'Polonia'] },
+    { q: '¿Quién preside el poder ejecutivo en un sistema parlamentario?', a: 'Primer Ministro', opciones: ['Presidente', 'Rey', 'Primer Ministro', 'Canciller', 'Senador', 'Diputado'] },
+    { q: '¿Cuál es el libro base del liberalismo escrito por Adam Smith?', a: 'La riqueza de las naciones', opciones: ['El Capital', 'La riqueza de las naciones', 'Leviatán', 'El Contrato Social', 'El Príncipe', 'Utopía'] },
+    { q: '¿Qué organismo internacional tiene su sede en La Haya?', a: 'Corte Internacional de Justicia', opciones: ['FMI', 'OMC', 'Corte Internacional de Justicia', 'OTAN', 'UNESCO', 'OIT'] },
+    { q: '¿Quién fue el líder del movimiento de independencia de la India?', a: 'Mahatma Gandhi', opciones: ['Jawaharlal Nehru', 'Mahatma Gandhi', 'Subhas Chandra Bose', 'B.R. Ambedkar', 'Indira Gandhi', 'Sardar Patel'] },
+    { q: '¿Qué ideología política enfatiza la autoridad y el nacionalismo extremo?', a: 'Fascismo', opciones: ['Liberalismo', 'Fascismo', 'Socialdemocracia', 'Ecologismo', 'Pacifismo', 'Globalismo'] },
+    { q: '¿En qué año cayó el Muro de Berlín?', a: '1989', opciones: ['1985', '1989', '1991', '1990', '1987', '1993'] },
+    { q: '¿Qué nombre recibe la cámara alta en muchos sistemas legislativos?', a: 'Senado', opciones: ['Congreso', 'Senado', 'Asamblea', 'Ayuntamiento', 'Cortes', 'Parlamento'] },
+    { q: '¿Quién escribió "El Príncipe"?', a: 'Nicolás Maquiavelo', opciones: ['Dante Alighieri', 'Nicolás Maquiavelo', 'Tomas Moro', 'Erasmo de Rotterdam', 'Hobbes', 'Locke'] },
+    { q: '¿Qué país abandonó la Unión Europea en el proceso llamado Brexit?', a: 'Reino Unido', opciones: ['Grecia', 'Francia', 'Reino Unido', 'Italia', 'Irlanda', 'Noruega'] },
+    { q: '¿Cuál es la ley fundamental de un Estado?', a: 'Constitución', opciones: ['Código Civil', 'Constitución', 'Decreto Ley', 'Tratado Internacional', 'Reglamento', 'Estatuto'] },
+    { q: '¿Qué tipo de gobierno ejerce el poder sin límites constitucionales?', a: 'Dictadura', opciones: ['República', 'Monarquía Parlamentaria', 'Dictadura', 'Federación', 'Confederación', 'Democracia'] },
+    { q: '¿A qué ideología pertenece el concepto de "plusvalía"?', a: 'Marxismo', opciones: ['Liberalismo', 'Marxismo', 'Keynesianismo', 'Anarcocapitalismo', 'Feudalismo', 'Mercantilismo'] },
+    { q: '¿Quién fue el primer presidente negro de Sudáfrica?', a: 'Nelson Mandela', opciones: ['Desmond Tutu', 'Nelson Mandela', 'Thabo Mbeki', 'Robert Mugabe', 'Kofi Annan', 'Jacob Zuma'] },
+    { q: '¿Qué organización tiene como objetivo la estabilidad financiera mundial?', a: 'FMI', opciones: ['OMS', 'FMI', 'OEA', 'Greenpeace', 'Amnistía Internacional', 'UNICEF'] },
+    { q: '¿Cuál es el principal órgano de toma de decisiones de la ONU?', a: 'Consejo de Seguridad', opciones: ['Asamblea General', 'Consejo de Seguridad', 'Secretaría', 'Consejo Económico', 'Corte Penal', 'Estatus Quo'] },
+    { q: '¿En qué país surgió la Revolución Francesa?', a: 'Francia', opciones: ['Bélgica', 'Italia', 'Francia', 'Austria', 'Prusia', 'Suiza'] },
+    { q: '¿Qué significa la sigla OEA?', a: 'Organización de los Estados Americanos', opciones: ['Orden de Estados Andinos', 'Organización de los Estados Americanos', 'Oficina de Estudios Agrícolas', 'Operación de Ejércitos Aliados', 'Organismo de Energía Atómica', 'Organización de Exportadores Árabes'] },
+    { q: '¿Quién es el actual Secretario General de la ONU (2024)?', a: 'António Guterres', opciones: ['Ban Ki-moon', 'António Guterres', 'Kofi Annan', 'Boutros-Ghali', 'Javier Pérez de Cuéllar', 'Donald Trump'] },
+    { q: '¿Qué ideología promueve la abolición de todo gobierno?', a: 'Anarquismo', opciones: ['Totalitarismo', 'Anarquismo', 'Monarquismo', 'Teocracia', 'Oligarquía', 'Plutocracia'] },
+    { q: '¿Qué ciudad es considerada la capital política de la Unión Europea?', a: 'Bruselas', opciones: ['Luxemburgo', 'Estrasburgo', 'Bruselas', 'Ámsterdam', 'Madrid', 'Viena'] },
+    { q: '¿Qué país es conocido como la democracia más grande del mundo por su población?', a: 'India', opciones: ['EE.UU.', 'China', 'India', 'Brasil', 'Indonesia', 'Nigeria'] }
+],
 };
 
-const salasActivas = new Map();
+const salasTrivia = new Map();
+const cooldowns = new Map();
 
 let handler = async (m, { conn, text, usedPrefix, command }) => {
     let user = global.db.data.users[m.sender]
-    if (!user.premium) return m.reply(`> 💎 *ACCESO PREMIUM*\n\n> Mis trivias son solo para mentes Élite, corazón.`)
-    if (salasActivas.has(m.sender)) return m.reply('> ⏳ Ya tienes una pregunta pendiente.')
+    let id = m.sender
+
+    if (await checkReg(m, user)) return
+
+    // --- COOLDOWN DE 15 SEGUNDOS ---
+    let time = cooldowns.get(id) || 0
+    if (Date.now() - time < 15000) {
+        let wait = Math.ceil((15000 - (Date.now() - time)) / 1000)
+        return m.reply(`> ⏳ *DESPACIO:* Tu mente está ardiendo, espera **${wait}s** para la siguiente.`)
+    }
+
+    if (salasTrivia.has(id)) return m.reply(`> 🎀 *Aviso:* Ya tienes una trivia activa. ¡Responde con el número!`)
 
     let category = text?.toLowerCase().trim()
     let validCategories = Object.keys(triviaData)
-    let s = premiumStyles[user.prefStyle] || premiumStyles["luxury"]
 
     if (!category || !validCategories.includes(category)) {
-        let help = s ? `${s.top}\n\n` : ''
-        help += `📚 *TRIVIA ELITE*\n\n`
-        help += `> Elige tu categoría, cielo:\n\n`
-        validCategories.forEach(cat => help += `• ${cat.toUpperCase()}\n`)
+        let help = `📚 *𝗗𝗘𝗦𝗔𝗙𝗜́𝗢 𝗗𝗘 𝗧𝗥𝗜𝗩𝗜𝗔*\n\n`
+        help += `> Elige una categoría, mi vida:\n\n`
+        validCategories.forEach(cat => help += `• *${cat.toUpperCase()}*\n`)
         help += `\n💡 *Uso:* \`${usedPrefix + command} historia\``
-        if (s) help += `\n\n${s.footer}`
-        return conn.sendMessage(m.chat, { text: help, mentions: [m.sender] }, { quoted: m })
+        return m.reply(help)
     }
 
     let questions = triviaData[category]
@@ -106,94 +170,77 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     let options = [...q.opciones].sort(() => Math.random() - 0.5)
     let correctIndex = options.findIndex(op => op.toLowerCase() === q.a.toLowerCase()) + 1
 
-    let caption = s ? `${s.top}\n\n` : ''
-    caption += `📝 *TRIVIA: ${category.toUpperCase()}*\n`
-    caption += `❓ *${q.q}*\n\n`
-    options.forEach((op, i) => {
-        caption += `${i + 1}- ${toBoldMono(op)}\n`
-    })
-    caption += `\n> 🛡️ Tienes *2 intentos*.\n`
-    caption += `> ⏰ *45s* | Responde solo el número.`
-    if (s) caption += `\n\n${s.footer}`
-
-    let { key } = await conn.sendMessage(m.chat, { text: caption, mentions: [m.sender] }, { quoted: m })
-
-    salasActivas.set(m.sender, {
-        key,
-        style: s,
+    salasTrivia.set(id, {
         correct: correctIndex,
         ans: q.a,
-        intentos: 2,
-        chat: m.chat,
-        timeout: setTimeout(() => {
-            if (salasActivas.has(m.sender)) {
-                let expLost = Math.floor(Math.random() * 100) + 100
-                user.exp = Math.max(0, (user.exp || 0) - expLost)
-                conn.sendMessage(m.chat, { text: `> ⏰ *TIEMPO AGOTADO*\n\n> @${m.sender.split('@')[0]}, fuiste muy lento. La respuesta era: *${q.a}*. Te quité **${expLost}** de EXP por hacerme esperar.`, mentions: [m.sender] }, { quoted: key })
-                salasActivas.delete(m.sender)
-            }
-        }, 45000)
+        intentos: 1,
+        chat: m.chat
     })
+
+    await m.react('🧠')
+    let caption = `📝 *𝗧𝗥𝗜𝗩𝗜𝗔: ${category.toUpperCase()}*\n\n`
+    caption += `❓ *𝗣𝗥𝗘𝗚𝗨𝗡𝗧𝗔:* \n> ${q.q}\n\n`
+    
+    options.forEach((op, i) => {
+        caption += `*${i + 1}.* ${op}\n`
+    })
+
+    caption += `\n> 🔥 *Racha:* ${user.racha || 0}\n`
+    caption += `> ⚠️ Tienes **1 oportunidad**.\n`
+    caption += `> _Responde solo con el número._`
+
+    return conn.reply(m.chat, caption, m)
 }
 
 handler.before = async (m, { conn }) => {
-    let game = salasActivas.get(m.sender)
-    if (!game || m.isBaileys || m.chat !== game.chat) return 
+    let id = m.sender
+    let game = salasTrivia.get(id)
+    if (!game || m.isBaileys || !m.text) return 
+    if (m.chat !== game.chat) return 
+
     if (!/^[1-6]$/.test(m.text.trim())) return 
 
     let input = parseInt(m.text.trim())
-    let user = global.db.data.users[m.sender]
-    let s = game.style
+    let user = global.db.data.users[id]
 
     if (input === game.correct) {
-        // Recompensas variables
-        let ganK = Math.floor(Math.random() * 10) + 10
-        let ganC = Math.floor(Math.random() * 400) + 300
-        let ganE = Math.floor(Math.random() * 200) + 200
-        let ganD = 1
+        let ganCoins = Math.floor(Math.random() * (2500 - 1800 + 1)) + 1800 
+        let ganExp = Math.floor(Math.random() * 500) + 300
+        
+        user.coin = (user.coin || 0) + ganCoins
+        user.exp = (user.exp || 0) + ganExp
+        user.racha = (user.racha || 0) + 1
 
-        user.kryons += ganK; user.coin += ganC; user.diamond += ganD; user.exp += ganE
+        let bonus = ""
+        if (user.racha % 5 === 0) {
+            user.diamond = (user.diamond || 0) + 2
+            bonus = `\n🔥 *BONUS RACHA:* +2 💎 Diamantes`
+        }
 
-        clearTimeout(game.timeout)
-        salasActivas.delete(m.sender)
+        salasTrivia.delete(id)
+        cooldowns.set(id, Date.now())
         await m.react('✅')
 
-        let win = s ? `${s.top}\n\n` : ''
-        win += `🎉 *¡CORRECTO! @${m.sender.split('@')[0]}*\n\n`
-        win += `> Sabía que eras inteligente... me has ganado **${ganC}** coins y **${ganE}** de exp. ¡Sigue así! ✨\n\n`
-        win += `🎁 *BOTÍN:* \n`
-        win += `> ⚡ +${ganK} Kryons | 💎 +1 Diamante\n`
-        win += `> 🪙 +${ganC} Coins | ✨ +${ganE} EXP`
-        if (s) win += `\n\n${s.footer}`
+        let win = `✨ *¡𝗤𝗨𝗘́ 𝗕𝗥𝗜𝗟𝗟𝗔𝗡𝗧𝗘!*\n\n`
+        win += `> ✅ Correcto: *${game.ans}*\n`
+        win += `> *Ganaste:* ${ganCoins.toLocaleString()} 🪙 y ${ganExp} ✨\n`
+        win += `> *Racha:* ${user.racha} 🔥${bonus}`
 
-        await conn.sendMessage(m.chat, { text: win, mentions: [m.sender] }, { quoted: m })
+        await m.reply(win)
+        await saveDatabase()
     } else {
-        game.intentos--
-        if (game.intentos <= 0) {
-            let expLost = Math.floor(Math.random() * 150) + 150
-            user.exp = Math.max(0, (user.exp || 0) - expLost)
-
-            clearTimeout(game.timeout)
-            salasActivas.delete(m.sender)
-            await m.react('💀')
-
-            let fail = s ? `${s.top}\n\n` : ''
-            fail += `💀 *¡AJAJAJ PERDISTE!*\n\n`
-            fail += `> @${m.sender.split('@')[0]}, me decepcionaste. La respuesta era: *${game.ans}*.\n`
-            fail += `> Por fallar tanto te he robado **${expLost}** de tu exp. 💋`
-            if (s) fail += `\n\n${s.footer}`
-            await conn.sendMessage(m.chat, { text: fail, mentions: [m.sender] }, { quoted: m })
-        } else {
-            await m.react('⚠️')
-            conn.reply(m.chat, `> ❌ *ERROR*\n\n> Te queda *1 última oportunidad*, piénsalo bien @${m.sender.split('@')[0]}... no querrás que te robe experiencia.`, m, { mentions: [m.sender] })
-        }
+        user.racha = 0
+        salasTrivia.delete(id)
+        cooldowns.set(id, Date.now())
+        await m.react('❌')
+        
+        return m.reply(`🚫 *¡𝗜𝗡𝗖𝗢𝗥𝗥𝗘𝗖𝗧𝗢!*\n\n> La respuesta era: *${game.ans}*\n> Tu racha 🔥 se ha roto. Me has decepcionado un poquito... 💋`)
     }
     return true
 }
 
 handler.help = ['trivia']
-handler.tags = ['premium']
+handler.tags = ['game']
 handler.command = /^(trivia|ptrivia)$/i
-handler.group = true
 
 export default handler

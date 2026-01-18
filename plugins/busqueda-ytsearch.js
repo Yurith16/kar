@@ -57,7 +57,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     }
 };
 
-handler.help = ['yts'];
+handler.help = ['yts (buscar en YouTube)'];
 handler.tags = ['downloader']
 handler.command = /^(yts|ytsearch)$/i;
 handler.group = true;

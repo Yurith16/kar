@@ -101,7 +101,7 @@ const handler = async (m, { conn, text, usedPrefix, command }) => {
   }
 }
 
-handler.help = ['tiktok', 'tiktokaudio']
+handler.help = ['tiktok + url', 'tiktokaudio + url']
 handler.tags = ['downloader']
 handler.command = ['tiktok', 'tt', 'tiktokaudio', 'tta', 'ttaudio']
 handler.group = true

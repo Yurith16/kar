@@ -67,7 +67,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
   }
 }
 
-handler.help = ['apk']
+handler.help = ['apk (descargas de app)']
 handler.tags = ['downloader']
 handler.command = ['apk2', 'apk', 'aptoide']
 handler.group = true

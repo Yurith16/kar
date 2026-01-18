@@ -138,7 +138,7 @@ const handler = async (m, { conn, args }) => {
   }
 }
 
-handler.help = ['appledl']
+handler.help = ['appledl (musicas de apple)']
 handler.tags = ['downloader']
 handler.command = /^(applemusic|appledl|appletrack)$/i
 handler.group = true

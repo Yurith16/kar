@@ -42,7 +42,7 @@ let handler = async (m, { conn, text }) => {
   }
 }
 
-handler.help = ['wm']
+handler.help = ['wm (renombrar stickers)']
 handler.tags = ['tools']
 handler.command = ['take', 'wm']
 

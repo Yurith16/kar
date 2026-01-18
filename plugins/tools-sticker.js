@@ -79,7 +79,7 @@ async function makeFkontak() {
   }
 }
 
-handler.help = ['sticker', 's']
+handler.help = [ 's (crear stickers)']
 handler.tags = ['tools']
 handler.command = ['s', 'sticker']
 

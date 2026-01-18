@@ -1,22 +1,10 @@
 import fetch from 'node-fetch'
 import cheerio from 'cheerio'
-import fs from 'fs'
-import path from 'path'
-
-// =================================================================
-// 🔥 CONFIGURACIÓN KARBOT - MENSAJES ATREVIDOS XVIDEOS 🔥
-// =================================================================
-const NSFW_ATREVIDO_XVIDEOS = {
-    buscando_descargando: "🤫 ¡Espera! Estoy entrando a Xvideos para succionar ese clip prohibido. *Mantenlo en secreto*. ⏳",
-    exito: "🔥 *¡Aquí está tu placer!* El objeto del deseo fue entregado. ¡A disfrutar! 😉",
-    sin_argumentos: "🥵 Veo que tienes prisa. Para empezar la acción, dame el *enlace* directo. ¡No seas tímido! 😌",
-    error_no_encontrado: "❌ Falló la descarga... el video parece ser demasiado *esquivo* o el enlace es inválido. 😈",
-    error_nsfw_off: "⛔ ¡ALTO! El burdel digital está cerrado. El modo prohibido está apagado. 😞",
-    error_general: "💔 Algo se ha roto en el proceso... Me han *pillado* o la conexión falló. 🥺",
-};
+import { verificarSaldoNSFW, procesarPagoNSFW } from '../lib/nsfw-pago.js'
+import { checkReg } from '../lib/checkReg.js'
 
 /**
- * Scraper de Xvideos
+ * Scraper de Xvideos - Lógica Intacta
  */
 async function xvideosdl(url) {
     return new Promise((resolve, reject) => {
@@ -44,37 +32,50 @@ async function xvideosdl(url) {
 }
 
 let handler = async (m, { conn, args, usedPrefix, command }) => {
-    // 1. Verificación NSFW en Base de Datos de Karbot
     let chat = global.db.data.chats[m.chat];
+    let user = global.db.data.users[m.sender];
+
+    // 1. Verificación de Registro y NSFW
+    if (await checkReg(m, user)) return;
+
     if (!chat.nsfw) {
         await conn.sendMessage(m.chat, { react: { text: '🔞', key: m.key } });
-        return m.reply(`╭━━━〔 🔞 𝙽𝚂𝙵𝚆 𝙳𝙴𝚂𝙰𝙲𝚃𝙸𝚅𝙰𝙳𝙾 〕━━━⬣\n║\n║ ⚠️ ${NSFW_ATREVIDO_XVIDEOS.error_nsfw_off}\n║ 𝙰𝚌𝚝í𝚟𝚊𝚕𝚘 𝚌𝚘𝚗: *${usedPrefix}on nsfw*\n║\n╰━━━━━━━━━━━━━━━━━━━━━━⬣`);
+        return m.reply(`> 🔞 *𝙽𝚂𝙵𝚆 𝙳𝙴𝚂𝙰𝙲𝚃𝙸𝚅𝙰𝙳𝙾*\n> 🔥 Actívalo con: *${usedPrefix}on nsfw*`);
+    }
+
+    // 2. Verificación de Saldo (Sin cobro aún)
+    const v = verificarSaldoNSFW(m.sender, 'fuerte');
+    if (!v.success) {
+        await conn.sendMessage(m.chat, { react: { text: '🎟️', key: m.key } });
+        return m.reply(v.mensajeError);
     }
 
     let link = args[0];
     if (!link || !link.startsWith("http")) {
         await conn.sendMessage(m.chat, { react: { text: '🥵', key: m.key } });
-        return m.reply(`> ✦ *Error:* » ${NSFW_ATREVIDO_XVIDEOS.sin_argumentos}\n> ⴵ *Ejemplo:* » ${usedPrefix}${command} https://www.xvideos.com/video70389849/...`);
+        return m.reply(`> 🌿 Proporciona un enlace válido de Xvideos, cielo.`);
     }
 
-    // 2. Reacción de inicio
+    // 3. Reacciones de proceso
     await conn.sendMessage(m.chat, { react: { text: "🔍", key: m.key } });
-    m.reply(`> 💫 *Estado:* » ${NSFW_ATREVIDO_XVIDEOS.buscando_descargando}`);
 
     try {
         const res = await xvideosdl(link);
         const downloadUrl = res.result.url;
         const videoTitle = res.result.title;
 
-        // 3. Reacción de proceso
         await conn.sendMessage(m.chat, { react: { text: "👅", key: m.key } });
 
-        const finalCaption = `╭━━〔 🔥 *𝚇𝚅𝙸𝙳𝙴𝙾𝚂 𝙳𝙻* 〕━━╮\n║\n║ 🫦 ${NSFW_ATREVIDO_XVIDEOS.exito}\n║\n║ 🎬 *𝚃í𝚝𝚞𝚕𝚘:* ${videoTitle}\n║\n╰━━━━━━━━━━━━━━━━━━━━━━⬣`;
+        // 4. Cobro Seguro y Caption Minimalista
+        const pago = procesarPagoNSFW(m.sender, 'fuerte');
 
-        // 4. Reacción de subida
+        let finalCaption = `> 🎬 *𝚃í𝚝𝚞𝚕𝚘:* ${videoTitle}\n`;
+        finalCaption += `> 🫦 *Aquí tienes tu pedido, corazón.*\n\n`;
+        finalCaption += pago.caption;
+
         await conn.sendMessage(m.chat, { react: { text: "⬆️", key: m.key } });
 
-        // Enviar como video directamente usando la URL de los servidores de Xvideos
+        // 5. Envío del archivo
         await conn.sendMessage(m.chat, {
             video: { url: downloadUrl },
             caption: finalCaption,
@@ -82,18 +83,18 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
             fileName: `${videoTitle}.mp4`
         }, { quoted: m });
 
-        // 5. Reacción final de éxito
         await conn.sendMessage(m.chat, { react: { text: "💦", key: m.key } });
 
     } catch (error) {
         console.error(error);
         await conn.sendMessage(m.chat, { react: { text: "❌", key: m.key } });
-        m.reply(`> 💔 *Fallo:* » ${NSFW_ATREVIDO_XVIDEOS.error_no_encontrado}`);
+        m.reply(`> 💔 *Fallo:* El video es inalcanzable.\n> 🎫 *𝚃𝚞𝚜 𝚙𝚊𝚜𝚎𝚜 𝚎𝚜𝚝á𝚗 𝚊 𝚜𝚊𝚕𝚟𝚘.*`);
     }
 };
 
 handler.help = ['xvideosdl <link>'];
 handler.tags = ['NSFW'];
 handler.command = /^(xvideosdl|xvdl|xvideos)$/i;
+handler.register = true;
 
 export default handler;

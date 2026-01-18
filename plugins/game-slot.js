@@ -1,108 +1,92 @@
-let handler = async (m, { conn, args, usedPrefix, command }) => {
+import { saveDatabase } from '../lib/db.js'
+import { checkReg } from '../lib/checkReg.js'
 
-    try {
-        if (!m.isGroup) return;
-        if (!global.db.data.chats[m.chat]?.economy) return m.reply(`> 🎰 *𝗖𝗔𝗦𝗜𝗡𝗢*\n> La economía está desactivada en este grupo.`);
+let handler = async (m, { conn, text, usedPrefix, command }) => {
+    let user = global.db.data.users[m.sender]
+    
+    if (await checkReg(m, user)) return
 
-        let user = global.db.data.users[m.sender];
-        if (!user) return;
-
-        // Cooldown de 30 segundos (más dinámico que 1 min)
-        let cooldown = 30000;
-        let now = Date.now();
-        if (now - (user.lastslot || 0) < cooldown) {
-            let timeLeft = msToTime((user.lastslot + cooldown) - now);
-            await m.react('⏳');
-            return m.reply(`> 🎰 *𝗖𝗔𝗦𝗜𝗡𝗢*\n> _La máquina necesita un respiro..._\n\n⏰ *Vuelve en:* ${timeLeft}`);
-        }
-
-        // Menú de ayuda
-        if (!args[0]) {
-            await m.react('🎰');
-            let help = `> 🎰 *𝗖𝗔𝗦𝗜𝗡𝗢 𝗦𝗟𝗢𝗧𝗦*\n> _Prueba tu suerte en la KarBot-Machine._\n\n`;
-            help += `🏆 *JACKPOTS:* (3 iguales)\n`;
-            help += `> 💎 💎 💎 » x15 + 5 💎\n`;
-            help += `> 7️⃣ 7️⃣ 7️⃣ » x10 + 2 💎\n`;
-            help += `> ⭐ ⭐ ⭐ » x5\n\n`;
-            help += `💰 *APUESTAS:*\n`;
-            help += `> 💵 Mínimo: 100 | Máximo: 5,000\n\n`;
-            help += `— — — — — — — — — — — —\n`;
-            help += `💡 *Uso:* \`${usedPrefix + command} 500\``;
-            return m.reply(help);
-        }
-
-        let apuesta = parseInt(args[0]);
-        if (isNaN(apuesta) || apuesta < 100) return m.reply(`> ❌ La apuesta mínima es de **100 Coins**.`);
-        if (apuesta > 5000) return m.reply(`> ❌ El límite máximo es de **5,000 Coins** por tiro.`);
-        if (user.coin < apuesta) return m.reply(`> ❌ No tienes saldo suficiente para esa apuesta.`);
-
-        // Lógica de Símbolos
-        let simbolos = ["🍒", "🍋", "⭐", "💎", "7️⃣", "🔔"];
-        let r1 = simbolos[Math.floor(Math.random() * simbolos.length)];
-        let r2 = simbolos[Math.floor(Math.random() * simbolos.length)];
-        let r3 = simbolos[Math.floor(Math.random() * simbolos.length)];
-
-        let multiplicador = 0;
-        let diamantesBonus = 0;
-        let gano = false;
-
-        // Lógica de premios
-        if (r1 === r2 && r2 === r3) {
-            gano = true;
-            if (r1 === "💎") { multiplicador = 15; diamantesBonus = 5; }
-            else if (r1 === "7️⃣") { multiplicador = 10; diamantesBonus = 2; }
-            else if (r1 === "⭐") { multiplicador = 5; }
-            else { multiplicador = 3; }
-        } else if (r1 === r2 || r2 === r3 || r1 === r3) {
-            gano = true;
-            multiplicador = 1.5;
-        }
-
-        let gananciaNetas = gano ? Math.floor(apuesta * multiplicador) : -apuesta;
-
-        // Ejecución de saldo
-        user.coin += gananciaNetas;
-        user.diamond = (user.diamond || 0) + diamantesBonus;
-        user.lastslot = now;
-
-        let res = `> 🎰 *𝗞𝗔𝗥𝗕𝗢𝗧-𝗠𝗔𝗖𝗛𝗜𝗡𝗘*\n`;
-        res += `> 🎰 [ ${r1} | ${r2} | ${r3} ]\n\n`;
-
-        if (gano) {
-            await m.react('🤑');
-            res += `✅ *¡GANASTE!*\n`;
-            res += `> _La suerte te sonríe hoy, corazón._\n\n`;
-            res += `🎁 *RECOMPENSA:* \n`;
-            res += `> 🪙 Coins: +${gananciaNetas.toLocaleString()}\n`;
-            if (diamantesBonus > 0) res += `> 💎 Diamantes: +${diamantesBonus}\n`;
-        } else {
-            await m.react('💸');
-            res += `❌ *PERDISTE*\n`;
-            res += `> _No te desanimes, la próxima será tuya._\n\n`;
-            res += `💸 *PÉRDIDA:* \n`;
-            res += `> 📉 Saldo: -${apuesta.toLocaleString()} Coins\n`;
-        }
-
-        res += `\n> 💰 *Cartera:* ${user.coin.toLocaleString()} Coins\n`;
-        res += `— — — — — — — — — — — —`;
-
-        return m.reply(res);
-
-    } catch (e) {
-        console.log(e);
-        return m.reply(`> ❌ Hubo un error en la máquina, intenta de nuevo.`);
+    let apuesta = parseInt(text)
+    if (isNaN(apuesta) || apuesta < 100) {
+        return m.reply(`> 🎀 *Uso correcto:*\n> \`${usedPrefix + command} <cantidad>\`\n\n_Mínimo: 100 Coins._`)
     }
-};
 
-handler.help = ['slot'];
-handler.tags = ['game'];
-handler.command = ['slot', 'slots', 'casino'];
-handler.group = true;
+    if (user.coin < apuesta) {
+        return m.reply(`> 🥀 *Pobreza:* No tienes suficientes coins, corazón.`)
+    }
 
-export default handler;
+    if (apuesta > 50000) {
+        return m.reply(`> ⚠️ *Límite:* La apuesta máxima es de 50,000 coins.`)
+    }
 
-function msToTime(duration) {
-    let seconds = Math.floor((duration / 1000) % 60);
-    let minutes = Math.floor((duration / (1000 * 60)) % 60);
-    return `${minutes}m ${seconds}s`;
+    // Emojis de la suerte
+    const emojis = ["🍎", "🍋", "🍇", "🍒", "💎", "🎰"];
+    
+    // --- SISTEMA DE PROBABILIDAD (30% Win Rate) ---
+    let ganar = Math.random() < 0.30 
+    let a, b, c;
+
+    if (ganar) {
+        // Generar una combinación ganadora (2 o 3 iguales)
+        a = emojis[Math.floor(Math.random() * emojis.length)]
+        let triple = Math.random() < 0.15 // Solo 15% de las victorias son Jackpots
+        if (triple) {
+            b = a
+            c = a
+        } else {
+            b = a
+            // El tercero es diferente para que sea "par"
+            do { c = emojis[Math.floor(Math.random() * emojis.length)] } while (c === a)
+        }
+    } else {
+        // Forzar pérdida (todos diferentes)
+        a = emojis[Math.floor(Math.random() * emojis.length)]
+        do { b = emojis[Math.floor(Math.random() * emojis.length)] } while (b === a)
+        do { c = emojis[Math.floor(Math.random() * emojis.length)] } while (c === a || c === b)
+    }
+
+    user.coin -= apuesta
+    await m.react('🎰')
+
+    let spinning = `🎰 *GIRO DE FORTUNA* 🎰\n\n`
+    spinning += `> 🎰 | ${a} | ${b} | ${c} | 🎰\n\n`
+    
+    let win = (a === b || b === c || a === c)
+    let reward = 0
+    let diamondBonus = 0
+
+    if (win) {
+        if (a === b && b === c) {
+            // JACKPOT
+            if (a === "💎") { reward = apuesta * 10; diamondBonus = 5 }
+            else if (a === "🎰") { reward = apuesta * 15; diamondBonus = 10 }
+            else { reward = apuesta * 5 }
+        } else {
+            // PAR
+            reward = Math.floor(apuesta * 1.5)
+        }
+
+        user.coin += reward
+        user.diamond = (user.diamond || 0) + diamondBonus
+        await m.react('🎉')
+        
+        spinning += `✨ *¡GANASTE!* ✨\n`
+        spinning += `> *Premio:* +${reward.toLocaleString()} Coins 🪙\n`
+        if (diamondBonus > 0) spinning += `> *Bono:* +${diamondBonus} 💎\n`
+    } else {
+        await m.react('❌')
+        spinning += `🥀 *PERDISTE...*\n`
+        spinning += `> *- ${apuesta.toLocaleString()} Coins*\n\n`
+        spinning += `_Suerte para la próxima, amor._`
+    }
+
+    await m.reply(spinning)
+    await saveDatabase()
 }
+
+handler.help = ['slots']
+handler.tags = ['game']
+handler.command = /^(slots|slot|tragamonedas)$/i
+handler.register = true
+
+export default handler

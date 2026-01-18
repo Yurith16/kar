@@ -119,9 +119,9 @@ let handler = async (m, { conn, text, usedPrefix }) => {
   }    
 }    
 
-handler.help = ['play2']    
+handler.help = ['ytmp4 (videos de Youtube)']    
 handler.tags = ['downloader']    
-handler.command = ['play2', 'ytmp4']
+handler.command = ['ytmp4']
 handler.group = true    
 
 export default handler

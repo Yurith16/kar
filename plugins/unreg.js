@@ -4,43 +4,47 @@ let handler = async (m, { conn, usedPrefix }) => {
   let who = m.sender
   let user = global.db.data.users[who]
 
-  // 1. VERIFICAR SI ESTÁ REGISTRADO
   if (!user || !user.registered) {
     await m.react('🥀')
-    return m.reply(`> 🎀 *Cariño:* No puedo borrar algo que no existe. Aún no te has presentado conmigo.`)
+    return m.reply(`> 🎀 *Aviso:* No tienes un registro activo para eliminar.`)
   }
 
-  // 2. ELIMINAR DATOS DE IDENTIDAD (Mantenemos economía por seguridad)
+  // Restricción de 7 días
+  let sieteDias = 7 * 24 * 60 * 60 * 1000
+  if (new Date() - user.lastUnreg < sieteDias) {
+    let faltan = Math.ceil((sieteDias - (new Date() - user.lastUnreg)) / (1000 * 60 * 60 * 24))
+    return m.reply(`> 🥀 *Aviso:* Podrás anular tu registro nuevamente en **${faltan} días**.`)
+  }
+
   user.registered = false
-  user.registeredName = "" // Limpiamos el nombre blindado
+  user.registeredName = ""
   user.age = 0
   user.genre = ""
   user.colorFav = ""
   user.animalFav = ""
   user.cumple = ""
+  user.lastUnreg = new Date() * 1 
 
   await m.react('💔')
 
-  // 3. MENSAJE DE DESPEDIDA HUMANO
-  let txt = `> 🥀 *𝚄𝚗 𝚟í𝚗𝚌𝚞𝚕𝚘 𝚜𝚎 𝚑𝚊 𝚛𝚘𝚝𝚘...*\n\n`
-  txt += `He borrado tu nombre y tu esencia de mi memoria. Me duele un poco verte partir de esta manera, pero respeto tu decisión.\n\n`
-  txt += `Ya no te llamaré por tu nombre, volverás a ser un número más en mi lista hasta que decidas volver a decirme quién eres con *${usedPrefix}reg*.\n\n`
-  txt += `_He guardado tus monedas y nivel por si decides regresar algún día..._`
+  let txt = `> 🥀 *𝚁𝙴𝙶𝙸𝚂𝚃𝚁𝙾 𝙰𝙽𝚄𝙻𝙰𝙳𝙾*\n`
+  txt += `> Tus datos de identidad han sido eliminados del sistema.\n`
+  txt += `> Puedes registrarte de nuevo usando *${usedPrefix}reg*.\n`
+  txt += `> _Se han conservado tus monedas y nivel._`
 
   await conn.sendMessage(m.chat, { 
     text: txt,
     contextInfo: {
       externalAdReply: {
         title: '💔 VÍNCULO ELIMINADO',
-        body: 'KarBot: Me siento un poco más vacía ahora.',
+        body: 'KarBot System',
         thumbnailUrl: 'https://i.postimg.cc/63HSmCvV/1757985995273.png',
-        mediaType: 1,
-        showAdAttribution: true
+        mediaType: 1
       }
     }
   }, { quoted: m })
 
-  try { await saveDatabase() } catch (e) { console.error(e) }
+  await saveDatabase()
 }
 
 handler.help = ['unreg']

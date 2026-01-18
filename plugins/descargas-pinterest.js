@@ -220,7 +220,7 @@ handler.before = async (m, { conn }) => {
     return true
 }
 
-handler.help = ['pinterest']
+handler.help = ['pinterest + nombre']
 handler.command = ['pinterest', 'pin', 'pint']
 handler.tags = ['downloader']
 handler.group = true

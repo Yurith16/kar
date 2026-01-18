@@ -164,7 +164,7 @@ const handler = async (m, { conn, args, usedPrefix, command }) => {
   }
 }
 
-handler.help = ['applesearch']
+handler.help = ['applesearch (buscar en apple)']
 handler.tags = ['downloader']
 handler.command = ['applesearch']
 

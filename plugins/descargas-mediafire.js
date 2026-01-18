@@ -103,7 +103,7 @@ let handler = async (m, { conn, args }) => {
     }
 };
 
-handler.help = ['mediafire']
+handler.help = ['mediafire + url']
 handler.tags = ['downloader']
 handler.command = ["mediafire", "mf"];
 handler.group = true;

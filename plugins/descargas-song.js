@@ -76,7 +76,7 @@ let handler = async (m, { conn, args, usedPrefix }) => {
 };
 
 
-handler.help = ['spotify']    
+handler.help = ['spotify + nombre']    
 handler.tags = ['downloader'] 
 handler.command = ["spotify", "spoti", "song"];
 handler.group = true;

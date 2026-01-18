@@ -1,233 +1,117 @@
-const palabras = [
-    "ABDUCCION", "ABOGADO", "ABSOLUTO", "ABSTRACTIVO", "ACTOR",
-    "ACTRIZ", "ACTUAL", "ACUSTICA", "ADN", "AEREO",
-    "AERODINAMICA", "AERONAUTICA", "AFECTIVO", "AGUILA", "AHORRO",
-    "ALEGRIA", "ALGEBRA", "ALGORITMO", "ALITERACION", "ALTERNATIVO",
-    "AMARILLO", "AMAZONAS", "AMBIENTAL", "AMISTAD", "AMOR",
-    "ANAGRAMA", "ANTARTIDA", "ANTROPOCENTRISMO", "ANTROPOLOGIA", "ANTROPOLOGO",
-    "APARATO", "ARBOL", "ARCAISMO", "ARQUEOLOGIA", "ARQUEOLOGICO",
-    "ARQUEOLOGO", "ARQUEOMETRIA", "ARQUITECTONICO", "ARQUITECTO", "ARRECIFE",
-    "ARRREGLISTA", "ARTICULO", "ARTIFICIAL", "ARTISTICO", "ASAMBLEA",
-    "ASOCIACION", "ASSONANCIA", "ASTROBIOLOGIA", "ASTROFISICO", "ASTRONAUTA",
-    "ASTRONOMIA", "ASTRONOMO", "ASTROMETRIA", "AURORA", "AUTOMOVIL",
-    "AUTOR", "AVION", "AXIOMA", "AZUL", "BAILE",
-    "BALANCE", "BANCA", "BANDA", "BARCO", "BASQUETBOL",
-    "BIBLIOTECA", "BICICLETA", "BIENES", "BIOCENTRISMO", "BIOLOGIA",
-    "BIOLOGICO", "BIOTECNOLOGIA", "BIOQUIMICA", "BOLSA", "BOREAL",
-    "BOSQUE", "BOTANICA", "BRYOLOGIA", "CACOFONIA", "CALCULO",
-    "CALIDAD", "CALEIDOCICLO", "CALEIDOSCOPIO", "CAMAROGRAFO", "CAMISA",
-    "CANTIDAD", "CANTANTE", "CAPACIDAD", "CARTOGRAFIA", "CELULA",
-    "CENSO", "CENTRIFUGACION", "CHAQUETA", "CHEF", "CICLISMO",
-    "CICLOPE", "CIENTIFICO", "CILINDRICO", "CINEMATICA", "CINETOSCOPIO",
-    "CIRCULAR", "CIRCUNFERENCIA", "CIRCUNLOQUIO", "CIRCUNNAVEGACION", "CIVILIZACION",
-    "CLIENTE", "COCIENTE", "COCINA", "COGNITIVISMO", "COGNITIVO",
-    "COLOR", "COLOQUIO", "COMERCIO", "COMUNICACION", "COMUNIDAD",
-    "CONCIERTO", "CONCLAVE", "CONCRETO", "CONDUCTISMO", "CONGRESO",
-    "CONICO", "CONJUNTO", "CONSCIENTE", "CONSERVADOR", "CONSTANTE",
-    "CONSTITUCIONALIDAD", "CONSUMIDOR", "CONTEMPORANEO", "CONTRADICCION", "CONVENCIONAL",
-    "CONVENCION", "CORO", "COROLARIO", "CORPORACION", "CORRELACION",
-    "COSMICO", "COSMOGONIA", "COSMOLOGIA", "CREADOR", "CREATIVO",
-    "CREDITO", "CRIPTOZOOLOGIA", "CRISTALOGRAFIA", "CROMATOGRAFIA", "CROMOSOMA",
-    "CUADRADO", "CUADRATICO", "CUBICO", "CUBICO", "CUESTIONARIO",
-    "CULTURA", "DECAGONO", "DEDUCCION", "DELFIN", "DEMANDA",
-    "DEMOSTRACION", "DENSIOMETRIA", "DEPORTE", "DESIERTO", "DESVIACION",
-    "DIACRONIA", "DIAGONAL", "DICCIONARIO", "DIMENSION", "DIAGNOSTICO",
-    "DIRECTOR", "DISCOTECA", "DISPOSITIVO", "DISEÑADOR", "DISTRIBUIDOR",
-    "DOCTOR", "DODECAGONO", "DONACION", "DRONES", "ECLIPSE",
-    "ECLIPTICA", "ECOCENTRISMO", "ECOLOGICO", "ECONOMIA", "ECOSISTEMA",
-    "ECUACION", "EDUCACION", "EDITOR", "EFICIENCIA", "EFICACIA",
-    "EFIMERO", "EGOCENTRISMO", "EJERCICIO", "ELECTROCARDIOGRAMA", "ELECTROFORESIS",
-    "ELECTROMAGNETISMO", "ELEFANTE", "ELIPSE", "ELLIPSE", "EMOCIONAL",
-    "EMPIRICO", "EMPLEO", "EMPRESA", "ENCUESTA", "ENCRIPTACION",
-    "ENEAGONO", "ENFERMEDAD", "ENTOMOLOGIA", "ENTREVISTA", "EQUIPO",
-    "ESCULTORICO", "ESCULTURA", "ESCATOLOGICO", "ESFERICO", "ESOTERICO",
-    "ESOTERISMO", "ESPACIAL", "ESPAÑA", "ESPECIAL", "ESPECTROMETRIA",
-    "ESPECTROSCOPIA", "ESPERANZA", "ESPIRAL", "ESTABILIDAD", "ESTADISTICA",
-    "ESTADO", "ESTALACTITA", "ESTALAGMITA", "ESTELAR", "ESTRATIGRAFIA",
-    "ESTRELLA", "ESTROBOSCOPIO", "ETERNIDAD", "ETIMOLOGIA", "ETNOCENTRISMO",
-    "EUFONIA", "EVOLUCION", "EVOLUTIVO", "EXOBIOLOGIA", "EXPERIMENTO",
-    "EXPONENCIAL", "FABRICANTE", "FAMILIA", "FANTASIA", "FARMACOLOGIA",
-    "FELICIDAD", "FENOMENOLOGIA", "FICOLOGIA", "FIGURATIVO", "FILMOTECA",
-    "FILOGENETICA", "FILOLOGIA", "FILOSOFIA", "FILOSOFICO", "FINANZAS",
-    "FISICO", "FITONIMICO", "FONEMA", "FONETICA", "FONOLOGIA",
-    "FOLIOSCOPIO", "FORMULA", "FOTOGRAFIA", "FOTOGRAFO", "FOTOMETRIA",
-    "FOTOSINTESIS", "FRACTAL", "FUNCION", "FUNDACION", "FUTBOL",
-    "FUTURO", "GALAXIA", "GANANCIA", "GEOCENTRISMO", "GEODESIA",
-    "GEOGRAFIA", "GEOLOGIA", "GEOLOGICO", "GEOLOGO", "GEOMETRIA",
-    "GEOPOLITICA", "GENETICA", "GIRASOL", "GLOBAL", "GLOSARIO",
-    "GNOSTICISMO", "GRAMATICA", "GRUPO", "GUERRA", "GUIA",
-    "GUIONISTA", "HELICE", "HELIOCENTRISMO", "HEMEROTECA", "HEPTAGONO",
-    "HERALDICA", "HERENCIA", "HERMETISMO", "HERPETOLOGIA", "HEXAGONO",
-    "HIDRAULICA", "HIDRODINAMICA", "HIDROLOGIA", "HIMALAYA", "HIPERBATON",
-    "HIPOTECA", "HISTORICO", "HORIZONTAL", "HOSPITAL", "ICOSAGONO",
-    "ICTIOLOGIA", "IDIOMA", "IMAGINATIVO", "IMPERIO", "IMPRESIONISTA",
-    "IMPRESOR", "INCONSCIENTE", "INCONMESURABLE", "INDICE", "INDUCCION",
-    "INDUSTRIA", "INFERENCIA", "INFINITO", "INFLACION", "INGENIERIA",
-    "INGENIERO", "INGREDIENTES", "INMEDIATO", "INMUNOLOGIA", "INNOVADOR",
-    "INSTRUMENTO", "INSTRUCTIVO", "INTELECTUAL", "INTELIGENCIA", "INTERFAZ",
-    "INTERES", "INTERESTELAR", "INTERPLANETARIO", "INTERNET", "INTERPRETE",
-    "INTERVENCION", "INVENCION", "INVERSION", "INVESTIGACION", "INVESTIGADOR",
-    "JARDIN", "JUBILACION", "JUSTICIA", "KALEIDOSCOPIO", "LABORATORIO",
-    "LEMA", "LEON", "LEXEMA", "LEXICOGRAFIA", "LEXICOLOGIA",
-    "LEXICO", "LIBERTAD", "LINEAL", "LITERARIO", "LITERATURA",
-    "LLUVIA", "LOCAL", "LOGARITMICO", "LOGOCENTRISMO", "MACROECONOMIA",
-    "MAESTRO", "MAGNETISMO", "MAMALOGIA", "MANUAL", "MAQUINA",
-    "MATEMATICO", "MECANICA", "MECANISMO", "MEDIA", "MEDIANA",
-    "MEDICINA", "MELANCOLIA", "MELODIA", "MENSAJE", "MERCADO",
-    "METAFISICA", "METAFORA", "METODOLOGIA", "METRICA", "MEXICO",
-    "MICROECONOMIA", "MICROLOGIA", "MICROSCOPIA", "MICROSCOPIO", "MIEDO",
-    "MINERALOGIA", "MITOCONDRIA", "MODA", "MODERNO", "MONOGRAFIA",
-    "MONTAÑA", "MORFEMA", "MORFOLOGIA", "MUESTRA", "MUNDIAL",
-    "MUSICA", "MUSICAL", "NANOTECNOLOGIA", "NATACION", "NATURALISTA",
-    "NEGOCIO", "NEOLOGISMO", "NEUROCIENCIA", "NIEVE", "NOCION",
-    "NUCLEO", "NUMERO", "NUMISMATICA", "NUTRICION", "OBLICUO",
-    "OBSERVACION", "OCEANO", "OCTOGONO", "OFERTA", "ONIRICO",
-    "ONOMASTICO", "ONOMATOPEYA", "ONTOLOGIA", "OPTICA", "ORGANIZACION",
-    "ORIGINAL", "ORNITOLOGIA", "ORQUESTA", "OXIGENO", "PACIENTE",
-    "PAIS", "PAISAJISTICO", "PALEOCLIMATOLOGIA", "PALEONTOLOGIA", "PALEONTOLOGICO",
-    "PALEONTOLOGO", "PALINDROMO", "PARABOLA", "PARADOJA", "PARADIGMATICO",
-    "PARAGOGE", "PARALELO", "PARALELOGRAMO", "PARAPSICOLOGIA", "PARIS",
-    "PARTICULAR", "PASADO", "PASIVOS", "PATRIMONIO", "PAZ",
-    "PELICULA", "PENSION", "PENTAGONO", "PERCEPCION", "PERDIDA",
-    "PERPENDICULAR", "PERPLEXIDAD", "PETROLOGIA", "PICTORICO", "PINACOTECA",
-    "PINTURA", "PIRAMIDAL", "PLANETA", "PLANETARIO", "PLATAFORMA",
-    "PLENARIO", "POBLACION", "POLICIA", "POLIEDRO", "POLIGONO",
-    "POLINOMIO", "POSESION", "POSTULADO", "PRACTICO", "PRAGMATICA",
-    "PREVENCION", "PRESTAMO", "PRIMORDIAL", "PRISMATICO", "PROBABILIDAD",
-    "PROCEDIMIENTO", "PRODUCTIVIDAD", "PRODUCTOR", "PROGRESIVO", "PROGRAMACION",
-    "PROPORCION", "PROPOSICION", "PROSODIA", "PROTOCOLO", "PROVEEDOR",
-    "PROXIMO", "PSICOANALISIS", "PSICOLOGIA", "PUBLICACION", "PUBLICADOR",
-    "PTERIDOLOGIA", "QUANTUM", "QUIMERA", "QUIMERICO", "QUIMICA",
-    "QUIMICO", "RACIONAL", "RADIESTESIA", "RADIOCARBONO", "RADIOMETRIA",
-    "RADIOSCOPIA", "RAZON", "REALIDAD", "REALISTA", "RECETA",
-    "REDES", "REGIONAL", "REGRESION", "RELACION", "RELATIVIDAD",
-    "RELATIVO", "REMOTO", "RENOVABLE", "RENTABILIDAD", "RESPETO",
-    "RESPIRACION", "RESULTADO", "RESTAURANTE", "REVOLUCION", "REVOLUCIONARIO",
-    "RIMA", "RITMO", "ROBOTICA", "ROJO", "ROMBO",
-    "ROSA", "SEDIMENTOLOGIA", "SEGURO", "SEMANTICA", "SEMIOTICA",
-    "SENOIDAL", "SENSITIVO", "SERENDIPIA", "SERVIDOR", "SILOGISMO",
-    "SIMPOSIO", "SINCRONIA", "SINTAXIS", "SISMOLOGIA", "SOCIEDAD",
-    "SOCIOLOGIA", "SOL", "SOLIDARIDAD", "SOLIPSISMO", "SOLISTA",
-    "SURREALISTA", "SUBCONSCIENTE", "SUBMARINO", "SUBTERRANEO", "SUSTENTABLE",
-    "TASA", "TAUMATROPO", "TECTONICA", "TELESCOPIA", "TELEFONO",
-    "TELESTICO", "TEOREMA", "TEORICO", "TERMODINAMICA", "TERRESTRE",
-    "TESIS", "TIGRE", "TOKYO", "TOPOGRAFIA", "TORMENTA",
-    "TOXICOLOGIA", "TRADICION", "TRADICIONAL", "TRAPECIO", "TRASCENDENCIA",
-    "TRASCONTINENTAL", "TRATADO", "TRATAMIENTO", "TREM", "TRIANGULO",
-    "TRISTEZA", "TROMPO", "TSUNAMI", "UFOLOGIA", "UNICO",
-    "UNIVERSAL", "UNIVERSO", "URBANISTICO", "USUARIO", "UTILIDAD",
-    "UTOPICO", "VACUNA", "VARIANZA", "VARIABLE", "VERTICAL",
-    "VESTIDO", "VIA", "VIDEOJUEGO", "VIENTO", "VIRTUAL",
-    "VOCABULARIO", "VOLCAN", "VOLCANOLOGIA", "VOLCANOLOGO", "VOLUMEN",
-    "ZOETROPO", "ZONA", "ZOONIMICO", "ZAPATOS", "ZOOLOGIA"
-];
+import { saveDatabase } from '../lib/db.js'
 
-const ordenaActivo = new Map();
+let words = [
+    "whatsapp", "karbot", "diamante", "moneda", "estrella", "usuario", "registro", 
+    "premium", "sistema", "dinero", "perfil", "esencia", "elegancia", "bot", 
+    "comando", "servidor", "juego", "victoria", "derrota", "esmeralda", "teclado",
+    "mensaje", "archivo", "codigo", "diseño", "fortuna", "brillante", "lider"
+]
 
-let handler = async (m, { conn, usedPrefix, command }) => {
-    if (ordenaActivo.has(m.sender)) return m.reply(`> ⚠️ Ya tienes un reto activo, corazón. ¡Termina ese primero!`)
+let handler = async (m, { conn, text, usedPrefix, command }) => {
+    conn.ordenar = conn.ordenar ? conn.ordenar : {}
+    let id = m.sender 
+    let user = global.db.data.users[m.sender]
 
-    const palabraOriginal = palabras[Math.floor(Math.random() * palabras.length)]
-    let palabraDesordenada = palabraOriginal.split('').sort(() => Math.random() - 0.5).join('')
-
-    if (palabraDesordenada === palabraOriginal) {
-        palabraDesordenada = palabraOriginal.split('').reverse().join('')
+    if (command === 'rendirse' || text === 'rendirse') {
+        if (!conn.ordenar[id]) return m.reply("> 🎀 *Cariño:* No tienes ningún juego activo.")
+        delete conn.ordenar[id]
+        
+        user.coin = Math.max(0, (user.coin || 0) - 500)
+        user.diamond = Math.max(0, (user.diamond || 0) - 1)
+        user.racha = 0 
+        await m.react('🥀')
+        return m.reply(`> 🥀 *COBARDÍA*\n\nTe has rendido. Penalización: *-500 Coins* y *-1 Diamante*. Racha reseteada.`)
     }
 
-    let palabraMostrar = palabraDesordenada.split('').join(' ')
+    if (conn.ordenar[id]) return m.reply(`> 🎀 *Aviso:* Ya tienes un juego en curso. Responde o usa \`${usedPrefix}rendirse\`.`)
 
-    // Premios balanceados para no romper la economía
-    let premios = {
-        coin: 350, // Ajustado para ser realista
-        kryons: 5,
-        diamonds: 1,
-        exp: 150
+    let word = words[Math.floor(Math.random() * words.length)]
+    let scrambled = word.split('').sort(() => 0.5 - Math.random()).join('')
+    
+    if (scrambled === word) scrambled = word.split('').reverse().join('')
+
+    conn.ordenar[id] = {
+        word: word.toLowerCase().trim(),
+        scrambled: scrambled.toUpperCase(),
+        tries: 3,
+        hint: false
     }
-
-    let caption = `> 🧩 *𝗢𝗥𝗗𝗘𝗡𝗔 𝗟𝗔 𝗣𝗔𝗟𝗔𝗕𝗥𝗔*\n\n`
-    caption += "```\n" + palabraMostrar + "\n```\n\n"
-    caption += `> 👤 *Jugador:* @${m.sender.split('@')[0]}\n`
-    caption += `> 🎯 *Intentos:* 3\n`
-    caption += `> 💡 Escribe *"pista"* por 200 coins.\n\n`
-    caption += `_¿Qué palabra crees que sea? Escríbela._`
 
     await m.react('🧩')
+    let txt = `🧩 *ORDENA LA PALABRA*\n\n`
+    txt += `> *Palabra:* \`${conn.ordenar[id].scrambled}\`\n`
+    txt += `> *Oportunidades:* 3 🤍\n\n`
+    txt += `_Escribe la palabra correcta. Escribe *pista* si la necesitas o *${usedPrefix}rendirse* para salir._`
 
-    ordenaActivo.set(m.sender, {
-        solucion: palabraOriginal,
-        premios: premios,
-        intentos: 3,
-        chat: m.chat,
-        pistaUsada: false
-    })
-
-    return conn.reply(m.chat, caption, m, { mentions: [m.sender] })
+    await m.reply(txt)
 }
 
 handler.before = async (m, { conn }) => {
-    let game = ordenaActivo.get(m.sender)
-
-    if (!game || m.isBaileys || !m.text) return 
-    if (m.chat !== game.chat) return
-
-    // Evitar que detecte comandos como respuestas
-    if (m.text.startsWith('.') || m.text.startsWith('/') || m.text.startsWith('#')) return
-
-    let text = m.text.trim().toLowerCase()
+    conn.ordenar = conn.ordenar ? conn.ordenar : {}
+    let id = m.sender
+    if (!conn.ordenar[id] || m.isBaileys || !m.text) return false
+    
+    let game = conn.ordenar[id]
     let user = global.db.data.users[m.sender]
+    let input = m.text.trim().toLowerCase()
 
-    // --- SISTEMA DE PISTAS ---
-    if (text === 'pista') {
-        if (game.pistaUsada) return m.reply('> ⚠️ Ya te di una pista, ¡tú puedes solo!')
-        if (user.coin < 200) return m.reply('> ❌ No tienes coins suficientes para la pista.')
-
-        user.coin -= 200
-        game.pistaUsada = true
-
-        let primeraLetra = game.solucion.charAt(0)
-        let longitud = game.solucion.length
-
-        return m.reply(`> 💡 *Aquí tienes una ayuda:*\n> Empieza con: *${primeraLetra}*\n> Tiene *${longitud}* letras.`)
+    if (input === 'pista') {
+        if (game.hint) {
+            await m.react('⚠️')
+            return m.reply("> ⚠️ Ya usaste tu pista.")
+        }
+        game.hint = true
+        await m.react('💡')
+        let hint = game.word.charAt(0) + game.word.charAt(1)
+        return m.reply(`> 💡 *PISTA:* Comienza con: \`${hint.toUpperCase()}...\``)
     }
 
-    // --- VERIFICAR RESPUESTA ---
-    let respuestaUser = m.text.trim().toUpperCase()
+    if (input === game.word) {
+        let rewardCoin = Math.floor(Math.random() * (1200 - 700 + 1)) + 700 
+        let rewardDmd = Math.random() > 0.8 ? 1 : 0 
+        
+        user.coin = (user.coin || 0) + rewardCoin
+        user.diamond = (user.diamond || 0) + rewardDmd
+        user.racha = (user.racha || 0) + 1
 
-    if (respuestaUser === game.solucion) {
-        user.coin = (user.coin || 0) + game.premios.coin
-        user.kryons = (user.kryons || 0) + game.premios.kryons
-        user.diamond = (user.diamond || 0) + game.premios.diamonds
-        user.exp = (user.exp || 0) + game.premios.exp
+        let bonusMsg = ""
+        if (user.racha % 5 === 0) {
+            user.diamond += 1
+            user.hotpass = (user.hotpass || 0) + 1
+            bonusMsg = `\n🔥 *BONUS:* +1 💎 y +1 🎫`
+        }
 
-        await m.react('✨')
-        let win = `> ✅ *¡𝗟𝗢𝗚𝗥𝗔𝗗𝗢!*\n\n`
-        win += `> La palabra era: *${game.solucion}*\n`
-        win += `> 👤 @${m.sender.split('@')[0]}\n\n`
-        win += `🏆 *Premio:* \n`
-        win += `> 🪙 +${game.premios.coin} Coins\n`
-        win += `> ⚡ +${game.premios.kryons} Kryons\n`
-        win += `> 💎 +${game.premios.diamonds} Diams`
+        await m.react('🎉')
+        let win = `✨ *¡LOGRADO, ID: ${m.sender.split('@')[0]}!*\n\n`
+        win += `> *Palabra:* ${game.word.toUpperCase()}\n`
+        win += `> *Ganancia:* ${rewardCoin.toLocaleString()} 🪙 ${rewardDmd > 0 ? `y ${rewardDmd} 💎` : ''}\n`
+        win += `> *Racha:* ${user.racha} 🔥${bonusMsg}`
 
-        ordenaActivo.delete(m.sender)
-        return m.reply(win, null, { mentions: [m.sender] })
+        await m.reply(win)
+        delete conn.ordenar[id]
+        await saveDatabase()
     } else {
-        // Ignorar si el mensaje es muy largo (probablemente no es una respuesta)
-        if (m.text.length > game.solucion.length + 3) return
+        if (m.text.startsWith('.') || m.text.startsWith('/') || m.text.startsWith('#')) return false
 
-        game.intentos -= 1
-
-        if (game.intentos > 0) {
+        game.tries -= 1
+        if (game.tries > 0) {
             await m.react('❌')
-            return m.reply(`> ❌ *Incorrecto.*\n> Te quedan *${game.intentos}* intentos. ¡Piensa bien!`)
+            return m.reply(`> ❌ *Incorrecto.* Te quedan *${game.tries}* intentos.`)
         } else {
-            ordenaActivo.delete(m.sender)
-            return m.reply(`> 💀 *¡Perdiste!*\n> La palabra era: *${game.solucion}*. No te rindas, intenta otra vez.`)
+            user.racha = 0
+            await m.react('💀')
+            let lose = `🥀 *JUEGO TERMINADO*\n\n`
+            lose += `> La palabra era: *${game.word.toUpperCase()}*\n`
+            lose += `> Tu racha ha vuelto a 0.`
+            await m.reply(lose)
+            delete conn.ordenar[id]
         }
     }
+    return true
 }
 
 handler.help = ['ordenar']
 handler.tags = ['game']
-handler.command = /^(ordenar|word|palabra)$/i
+handler.command = /^(ordenar|word|palabra|rendirse)$/i
 
 export default handler

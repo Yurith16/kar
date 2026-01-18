@@ -1,74 +1,68 @@
-let handler = async (m, { conn, args, usedPrefix, command }) => {
-    try {
-        if (!m.isGroup) return;
-        if (!global.db.data.chats[m.chat]?.economy) return m.reply(`> 🎭 La economía está desactivada en este grupo, no me pidas que ignore las reglas.`);
+import { checkReg } from '../lib/checkReg.js'
 
-        let who = m.quoted ? m.quoted.sender : (args[0] ? args[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net' : null);
-        if (!who) return m.reply(`> 🎭 ¿A quién tienes en la mira? Menciona a alguien o responde a su mensaje para intentar el robo.`);
-        if (who === m.sender) return m.reply(`> 🎭 ¿Robarte a ti mismo? Corazón, si necesitas monedas solo dímelo, no hace falta que intentes engañarte así.`);
+// Estética KarBot
+const HOJITAS = ['🌿', '🍃', '🍀', '🌱', '☘️']
+const REACCIONES = ['🌿', '🍃', '🍀', '🌱', '🌼', '🌸', '🌺', '💮', '🥀', '🌻', '🌹', '🌷', '🏵️']
 
-        let ladron = global.db.data.users[m.sender];
-        let victima = global.db.data.users[who];
-        if (!victima) return m.reply(`> 🎭 No encuentro a esa persona en mis registros, parece que se ha esfumado.`);
+const FRASES = [
+  "Trabajaste como barman en un club de lujo",
+  "Limpiaste los servidores de KarBot con éxito",
+  "Hiciste de guardaespalda para un político corrupto",
+  "Vendiste fotos de tus pies en internet",
+  "Fuiste mercenario en una guerra lejana",
+  "Ayudaste a una anciana a cruzar la calle (y le robaste)",
+  "Trabajaste turnos extra en una cafetería",
+  "Hackeaste una cuenta bancaria pequeña",
+  "Fuiste repartidor de comida bajo la lluvia",
+  "Diste clases particulares de programación",
+  "Trabajaste como extra en una película de drama",
+  "Recogiste basura en la playa"
+]
 
-        let cooldown = 600000; // 10 minutos
-        if (Date.now() - (ladron.lastcrime || 0) < cooldown) {
-            return m.reply(`> 🚔 Shhh, la policía todavía está patrullando la zona por tu culpa. Espera **${msToTime((ladron.lastcrime + cooldown) - Date.now())}** antes de volver a las andadas.`);
-        }
+function getLeaf() { return HOJITAS[Math.floor(Math.random() * HOJITAS.length)] }
+function getReact() { return REACCIONES[Math.floor(Math.random() * REACCIONES.length)] }
+function getWork() { return FRASES[Math.floor(Math.random() * FRASES.length)] }
 
-        victima.coin = (Number(victima.coin) || 0);
-        ladron.coin = (Number(ladron.coin) || 0);
+let handler = async (m, { conn }) => {
+  let user = global.db.data.users[m.sender]
+  if (await checkReg(m, user)) return
 
-        if (victima.coin < 200) return m.reply(`> 📭 Déjalo ir... esa pobre alma no tiene ni para un caramelo. No vale la pena el riesgo.`);
+  // Cooldown de 5 minutos
+  let cooldown = 300000 
+  let time = (user.lastwork || 0) + cooldown
+  if (new Date() - (user.lastwork || 0) < cooldown) {
+      await m.react('⏳')
+      return m.reply(`> ⏳ Estás cansado. Vuelve en: **${msToTime(time - new Date())}**`)
+  }
 
-        ladron.lastcrime = Date.now();
-        const exito = Math.random() <= 0.30;
+  // Recompensas de trabajo
+  let coinHasil = Math.floor(Math.random() * 800) + 300
+  let expHasil = Math.floor(Math.random() * 700) + 200
+  
+  await m.react(getReact())
 
-        if (exito) {
-            let porcentaje = Math.random() * (0.15 - 0.05) + 0.05;
-            let robo = Math.floor(victima.coin * porcentaje);
+  user.coin = (user.coin || 0) + coinHasil
+  user.exp = (user.exp || 0) + expHasil
+  user.lastwork = new Date() * 1
+  
+  let h = getLeaf()
+  let txt = `${h} *TRABAJO COMPLETADO*\n\n`
+  txt += `> ${getWork()}\n\n`
+  txt += `> 🪙 Coin : +${coinHasil}\n`
+  txt += `> ✨ Exp : +${expHasil}`
 
-            victima.coin -= robo;
-            ladron.coin += robo;
-
-            let txt = `> 🦹 *¡Lo lograste! Pero que no se te haga costumbre...*\n\n`;
-            txt += `Has sido muy ágil. Lograste quitarle **${robo.toLocaleString()} coins** a @${who.split('@')[0]} sin que se diera cuenta.\n\n`;
-            txt += `💰 *Tu botín actual:* ${ladron.coin.toLocaleString()} coins\n`;
-            txt += `— — — — — — — — — — — —\n`;
-            txt += `*Espero que uses ese dinero para algo bueno, no me hagas arrepentirme de no haberte delatado.*`;
-
-            await m.react('💰');
-            return conn.sendMessage(m.chat, { text: txt, mentions: [who, m.sender] }, { quoted: m });
-
-        } else {
-            let multa = Math.floor(ladron.coin * 0.15) + 100;
-            ladron.coin = Math.max(0, ladron.coin - multa);
-            victima.coin += Math.floor(multa / 2);
-
-            let txt = `> 👮 *¡Ay no! Te han atrapado in fraganti.*\n\n`;
-            txt += `Te lo advertí, la policía de KarBot no se anda con juegos. Te han procesado y la fianza no ha sido barata.\n\n`;
-            txt += `💸 *Multa pagada:* -${multa.toLocaleString()} coins\n`;
-            txt += `💳 *Tu saldo:* ${ladron.coin.toLocaleString()} coins\n\n`;
-            txt += `*Me duele verte así, pero las reglas son las reglas. Paga tu deuda y descansa un poco.*`;
-
-            await m.react('🚓');
-            return conn.sendMessage(m.chat, { text: txt, mentions: [m.sender] }, { quoted: m });
-        }
-
-    } catch (e) {
-        return m.reply(`> ❌ Algo salió mal con el plan... mejor retírate por ahora.`);
-    }
-};
-
-function msToTime(duration) {
-    let seconds = Math.floor((duration / 1000) % 60);
-    let minutes = Math.floor((duration / (1000 * 60)) % 60);
-    return `${minutes}m ${seconds}s`;
+  m.reply(txt)
 }
 
-handler.help = ['robar'];
-handler.tags = ['economy'];
-handler.command = ['robar', 'rob', 'steal'];
-handler.group = true;
+handler.help = ['work']
+handler.tags = ['economy']
+handler.command = ['work', 'trabajar', 'chamba'] 
+handler.register = true
 
-export default handler;
+export default handler
+
+function msToTime(duration) {
+    let seconds = Math.floor((duration / 1000) % 60)
+    let minutes = Math.floor((duration / (1000 * 60)) % 60)
+    return `${minutes}m ${seconds}s`
+}

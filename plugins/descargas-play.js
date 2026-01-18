@@ -1,113 +1,119 @@
-import fetch from 'node-fetch'
+import axios from 'axios'
 import yts from 'yt-search'
 import { checkReg } from '../lib/checkReg.js'
 
-let handler = async (m, { conn, text, usedPrefix }) => {
-  const userId = m.sender
-  const user = global.db.data.users[userId]
-  
-  // Verificación de registro
-  if (await checkReg(m, user)) return
-  
-  if (!text) {
-    return conn.reply(m.chat, '> Debe ingresar el nombre de una música', m)
-  }
+// Mapa para gestionar las descargas activas y evitar el abuso
+let descargasActivas = new Set()
 
-  try {
-    // Secuencia de reacciones con plantas y tréboles
-    const reacciones = ['🔍', '🌿', '🍀', '🎶']
-    for (const reacc of reacciones) {
-      await m.react(reacc)
+let handler = async (m, { conn, text, usedPrefix, command }) => {
+    const user = global.db.data.users[m.sender]
+
+    // 1. Verificación de registro (Estilo KarBot)
+    if (await checkReg(m, user)) return
+
+    // 2. Control de abuso (Una descarga a la vez)
+    if (descargasActivas.has(m.sender)) {
+        return m.reply(`> ⚠️ *𝗗𝗘𝗧𝗘𝗡𝗧𝗘:* No abuses, cielo. Ya tienes una descarga en proceso. Espera a que termine para pedir otra melodía.`)
     }
 
-    const search = await yts(text)
-    if (!search.videos.length) {
-      await m.react('❌')
-      return conn.reply(m.chat, '> Lo siento, hubo un error.', m)
-    }
+    // 3. Ayuda humanizada
+    if (!text) return m.reply(`> ¿Qué música desea buscar hoy, cielo?`)
 
-    const video = search.videos[0]
-    const { title, url, thumbnail, author, views, duration, ago } = video
+    try {
+        // Añadir a descargas activas
+        descargasActivas.add(m.sender)
 
-    // --- DISEÑO DE DETALLES EXACTO ---
-    const videoDetails = `> 🎵 *「🌱」 ${title}*\n\n` +
-        `> 🍃 *Canal:* » ${author.name}\n` +
-        `> ⚘ *Duración:* » ${duration.timestamp}\n` +
-        `> 🌼 *Vistas:* » ${(views || 0).toLocaleString()}\n` +
-        `> 🍀 *Publicado:* » ${ago || 'Desconocido'}\n` +
-        `> 🌿 *Enlace:* » ${url}`
-
-    // Enviar imagen con detalles primero
-    await conn.sendMessage(m.chat, {
-        image: { url: thumbnail },
-        caption: videoDetails
-    }, { quoted: m })
-
-    // Obtener miniatura como buffer
-    let thumbBuffer = null
-    if (thumbnail) {
-      try {
-        const resp = await fetch(thumbnail)
-        thumbBuffer = Buffer.from(await resp.arrayBuffer())
-      } catch (err) {
-        console.log('No se pudo obtener la miniatura:', err.message)
-      }
-    }
-
-    const fuentes = [
-      { api: 'Adonix', endpoint: `https://api-adonix.ultraplus.click/download/ytaudio?apikey=${global.apikey}&url=${encodeURIComponent(url)}`, extractor: res => res?.data?.url },
-      { api: 'MayAPI', endpoint: `https://mayapi.ooguy.com/ytdl?url=${encodeURIComponent(url)}&type=mp3&apikey=${global.APIKeys['https://mayapi.ooguy.com']}`, extractor: res => res.result.url }
-    ]
-
-    let audioUrl, exito = false
-
-    for (let fuente of fuentes) {
-      try {
-        const response = await fetch(fuente.endpoint)
-        if (!response.ok) continue
-        const data = await response.json()
-        const link = fuente.extractor(data)
-        if (link) {
-          audioUrl = link
-          exito = true
-          break
+        // Secuencia de reacciones 🔍🌿🍀🎶
+        const reacciones = ['🔍', '🌿', '🍀', '🎶']
+        for (const reacc of reacciones) {
+            await m.react(reacc)
         }
-      } catch (err) {
-        console.log(`Error con ${fuente.api}:`, err.message)
-      }
+
+        // Búsqueda en YouTube
+        const search = await yts(text)
+        if (!search.videos.length) {
+            descargasActivas.delete(m.sender)
+            await m.react('❌')
+            return m.reply(`> Lo siento, no encontré nada sobre "${text}".`)
+        }
+
+        const video = search.videos[0]
+        const { title, url, thumbnail, author, views, duration, ago } = video
+
+        // --- DISEÑO DE DETALLES KARBOT ---
+        const videoDetails = `> 🎵 *「🌱」 ${title}*\n\n` +
+            `> 🍃 *Canal:* » ${author.name}\n` +
+            `> ⚘ *Duración:* » ${duration.timestamp}\n` +
+            `> 🌼 *Vistas:* » ${(views || 0).toLocaleString()}\n` +
+            `> 🍀 *Publicado:* » ${ago || 'Reciente'}\n` +
+            `> 🌿 *Enlace:* » ${url}`
+
+        await conn.sendMessage(m.chat, {
+            image: { url: thumbnail },
+            caption: videoDetails
+        }, { quoted: m })
+
+        let audioData
+        let success = false
+
+        // === MOTOR 1: API ANANTA (Prioridad) ===
+        try {
+            const resAnanta = await axios({
+                method: 'get',
+                url: `https://api.ananta.qzz.io/api/yt-mp3?url=${encodeURIComponent(url)}`,
+                headers: { "x-api-key": "antebryxivz14" },
+                responseType: 'arraybuffer',
+                timeout: 30000 // 30 segundos de espera
+            })
+            
+            if (resAnanta.data) {
+                audioData = resAnanta.data
+                success = true
+            }
+        } catch (e) {
+            console.log('API Ananta falló, intentando motor secundario...')
+        }
+
+        // === MOTOR 2: API SPARKY (Backup) ===
+        if (!success) {
+            try {
+                const { data: resSparky } = await axios.get(`https://api-aswin-sparky.koyeb.app/api/downloader/song?search=${encodeURIComponent(url)}`)
+                if (resSparky.status && resSparky.data.url) {
+                    const resAudio = await axios.get(resSparky.data.url, { responseType: 'arraybuffer' })
+                    audioData = resAudio.data
+                    success = true
+                }
+            } catch (e) {
+                console.error('Ambas APIs fallaron:', e)
+            }
+        }
+
+        if (success && audioData) {
+            // Enviar el audio como documento
+            await conn.sendMessage(m.chat, {
+                document: audioData,
+                mimetype: 'audio/mpeg',
+                fileName: `${title}.mp3`,
+                caption: `> 🎵 ${title}`
+            }, { quoted: m })
+            await m.react('⚙️')
+        } else {
+            throw new Error('No se pudo obtener el audio de ninguna API')
+        }
+
+    } catch (e) {
+        console.error(e)
+        await m.react('❌')
+        await m.reply(`> Lo siento, hubo un drama con las APIs y no pude obtener tu música.`)
+    } finally {
+        // Quitar de descargas activas siempre, pase lo que pase
+        descargasActivas.delete(m.sender)
     }
-
-    if (!exito) {
-      // El engranaje final de KarBot ⚙️
-      await m.react('⚙️')
-      return conn.reply(m.chat, '> Lo siento, hubo un error.', m)
-    }
-
-    // Enviar audio como documento
-    await conn.sendMessage(
-      m.chat,
-      {
-        document: { url: audioUrl },
-        mimetype: 'audio/mpeg',
-        fileName: `${title}.mp3`,
-        caption: `> 🎵 ${title}`
-      },
-      { quoted: m }
-    )
-
-    // El engranaje final de KarBot ⚙️
-    await m.react('⚙️')
-
-  } catch (e) {
-    console.error('Error en play:', e)
-    await m.react('❌')
-    await conn.reply(m.chat, '> Lo siento, hubo un error.', m)
-  }
 }
 
-handler.help = ['play']
-handler.tags = ['downloader']
-handler.command = ['play']
+handler.help = ['play (musicas de YouTube)']
+handler.tags = ['descargas']
+handler.command = ['play', 'musica', 'song']
 handler.group = true
 
 export default handler
