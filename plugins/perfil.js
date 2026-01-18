@@ -23,9 +23,8 @@ let handler = async (m, { conn, usedPrefix }) => {
   const pathCustom = join(process.cwd(), 'src', 'Images', 'perfiles', `${userId}.png`)
   const defaultImg = 'https://image2url.com/r2/default/images/1768770939921-aafe9b1c-929f-426f-9282-0a6105dbc62f.jpg'
 
-  // Determinamos la fuente de la imagen
   if (existsSync(pathCustom)) {
-      pp = readFileSync(pathCustom) // Leemos el archivo local
+      pp = readFileSync(pathCustom) 
   } else {
       try {
           let url = await conn.profilePictureUrl(who, 'image').catch(_ => null)
@@ -54,11 +53,12 @@ let handler = async (m, { conn, usedPrefix }) => {
   txt += `▢ *🆙 Nivel:* ${user.level || 0}\n`
   txt += `▢ *⬆️ XP:* ${user.exp || 0} (${progreso.toFixed(1)}%)\n`
   txt += `▢ *🏆 Rango:* ${rango}\n`
+  txt += `\n`
+  txt += `▢ *🔥 Racha Juego:* ${user.racha || 0} victorias\n`
   txt += `▢ *📇 Registro:* ${sn}\n`
   txt += `▢ *🎟️ Élite:* ${user.premium ? '✅' : '❎'}\n`
   txt += `└──────────────`
 
-  // Usamos conn.sendMessage con el tipo 'image' para asegurar que se muestre la foto
   await conn.sendMessage(m.chat, { 
       image: pp instanceof Buffer ? pp : { url: pp.url }, 
       caption: txt,
