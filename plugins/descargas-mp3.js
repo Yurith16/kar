@@ -89,12 +89,12 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         }
 
         if (success && audioData) {
-            // Enviar el audio como documento
+            // Enviar el audio normal (NO como documento)
             await conn.sendMessage(m.chat, {
-                document: audioData,
+                audio: audioData,
                 mimetype: 'audio/mpeg',
-                fileName: `${title}.mp3`,
-                caption: `> 🎵 ${title}`
+                ptt: false,
+                fileName: `${title}.mp3`
             }, { quoted: m })
             await m.react('⚙️')
         } else {
@@ -111,9 +111,9 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     }
 }
 
-handler.help = ['play (musicas de YouTube)']
+handler.help = ['mp3 (musica en formato mp3)']
 handler.tags = ['downloader']  
-handler.command = ['play', 'musica', 'song']
+handler.command = ['mp3']
 handler.group = true
 
 export default handler

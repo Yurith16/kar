@@ -78,7 +78,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
 }
 
 handler.help = ['ytmp3 (musicas de YouTube)']
-handler.tags = ['descargas']
+handler.tags = ['downloader']  
 handler.command = ['ytmp3']
 handler.group = true
 
