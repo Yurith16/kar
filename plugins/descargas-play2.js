@@ -2,7 +2,10 @@ import yts from 'yt-search'
 import fetch from 'node-fetch'    
 import { checkReg } from '../lib/checkReg.js'
 
-// Función para la API de Aswin Sparky (ESTRUCTURA CORRECTA)
+// Mapa para gestionar las descargas activas y evitar el abuso
+let descargasActivas = new Set()
+
+// Función para la API de Aswin Sparky
 async function apiAswinSparky(url) {
   try {
     const apiURL = `https://api-aswin-sparky.koyeb.app/api/downloader/ytv?url=${encodeURIComponent(url)}`
@@ -12,7 +15,6 @@ async function apiAswinSparky(url) {
     
     const data = await res.json()
     
-    // Verificar estructura de respuesta CORRECTA según la documentación
     if (data.status && data.data && data.data.url) {
       return { 
         url: data.data.url, 
@@ -20,7 +22,6 @@ async function apiAswinSparky(url) {
       }
     }
     
-    // Si tiene estructura alternativa
     if (data.status && data.download && data.download.video) {
       return { 
         url: data.download.video, 
@@ -37,30 +38,43 @@ async function apiAswinSparky(url) {
 }
 
 let handler = async (m, { conn, text, usedPrefix }) => {    
-  const userId = m.sender
-  const user = global.db.data.users[userId]
+  const user = global.db.data.users[m.sender]
   
-  // Verificación de registro
+  // 1. Verificación de registro
   if (await checkReg(m, user)) return
   
-  if (!text) {
-    return conn.reply(m.chat, '> Debe ingresar el nombre de un video', m)
-  }    
+  // 2. Control de abuso (Una descarga a la vez)
+  if (descargasActivas.has(m.sender)) {
+    return m.reply(`> ⚠️ *𝗗𝗘𝗧𝗘𝗡𝗧𝗘:* No abuses, cielo. Ya tienes una descarga en proceso. Espera a que termine para pedir otro video.`)
+  }
+
+  if (!text) return m.reply(`> ¿Qué video desea buscar hoy, cielo?`)
 
   try {    
-    // Reacción inicial con 🌱
+    // Añadir a descargas activas
+    descargasActivas.add(m.sender)
+
+    // Reacción inicial
     await m.react('🌱')
 
     // Buscar en YouTube
     const searchResults = await yts(text)    
     if (!searchResults.videos.length) {
+      descargasActivas.delete(m.sender)
       await m.react('❌')
-      return conn.reply(m.chat, '> Lo siento, hubo un error.', m)
+      return m.reply(`> Lo siento, no encontré nada sobre "${text}".`)
     }
 
     const video = searchResults.videos[0]    
 
-    // --- DISEÑO DE DETALLES IGUAL QUE PLAY ---
+    // --- RESTRICCIÓN DE DURACIÓN (2 HORAS = 7200 SEGUNDOS) ---
+    if (video.seconds > 7200) {
+      descargasActivas.delete(m.sender)
+      await m.react('❌')
+      return m.reply(`> ⚠️ No tienes permitido descargar videos tan grandes. El límite es de 2 horas.`)
+    }
+
+    // --- DISEÑO DE DETALLES ---
     const videoDetails = `> 🎬 *「🌱」 ${video.title}*\n\n` +
         `> 🍃 *Canal:* » ${video.author.name}\n` +
         `> ⚘ *Duración:* » ${video.timestamp}\n` +
@@ -81,23 +95,25 @@ let handler = async (m, { conn, text, usedPrefix }) => {
     const response = await fetch(videoData.url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Referer': 'https://www.youtube.com/',
-        'Accept': 'video/webm,video/ogg,video/*;q=0.9,application/ogg;q=0.7,audio/*;q=0.6,*/*;q=0.5'
+        'Referer': 'https://www.youtube.com/'
       }
     })
     
-    if (!response.ok) {
-      throw new Error('Error al descargar el video')
-    }
+    if (!response.ok) throw new Error('Error al descargar el video')
     
     const buffer = await response.buffer()
-
-    // Verificar tamaño del buffer
-    if (buffer.length === 0) {
-      throw new Error('El video está vacío')
+    
+    // --- RESTRICCIÓN DE PESO (1GB = 1024 MB) ---
+    const sizeMB = buffer.length / (1024 * 1024)
+    if (sizeMB > 1024) {
+      descargasActivas.delete(m.sender)
+      await m.react('❌')
+      return m.reply(`> ⚠️ El archivo supera el límite de 1GB permitido.`)
     }
 
-    // Enviar el video COMO DOCUMENTO con la frase específica
+    if (buffer.length === 0) throw new Error('El video está vacío')
+
+    // Enviar el video COMO DOCUMENTO
     await conn.sendMessage(    
       m.chat,    
       {    
@@ -109,14 +125,16 @@ let handler = async (m, { conn, text, usedPrefix }) => {
       { quoted: m }    
     )    
 
-    // El engranaje final de KarBot ⚙️
     await m.react('⚙️')
 
   } catch (e) {    
-    console.error('❌ Error en play2:', e)    
+    console.error('❌ Error en ytmp4:', e)    
     await m.react('❌')
-    await conn.reply(m.chat, '> Lo siento, hubo un error.', m)
-  }    
+    await m.reply(`> Lo siento, hubo un error con la descarga del video.`)
+  } finally {
+    // Quitar de descargas activas siempre al final
+    descargasActivas.delete(m.sender)
+  }
 }    
 
 handler.help = ['ytmp4 (videos de Youtube)']    
