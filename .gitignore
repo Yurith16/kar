@@ -10,8 +10,6 @@ Sessions/
 *.session
 creds.json
 
-# Database files
-database.json
 
 # Temporary files
 tmp/
