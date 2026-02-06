@@ -18,7 +18,7 @@ global.retirado = [["50496926150", "𝙷𝙴𝚁𝙽𝙰𝙽𝙳𝙴𝚉", true]
 // Configuraciones principales
 global.roowner = ["50496926150"];
 global.owner = [["50496926150", "𝙷𝙴𝚁𝙽𝙰𝙽𝙳𝙴𝚉", true],
-  ['50487690812', 'Kar', true]];
+  ['51913347603', 'Kar', true]];
 
 global.mods = ["50496926150"];
 global.suittag = ["50496926150"];
@@ -38,7 +38,7 @@ global.ItsukiJadibts = false;
 global.Choso = false;
 global.prefix = "/";
 global.apikey = "𝙺𝙰𝚁𝙱𝙾𝚃𝙸𝙰"; // ¡CORREGIDO!
-global.botNumber = '50487690812'// Números y settings globales para varios códigos
+global.botNumber = '50498729368'// Números y settings globales para varios códigos
 global.packname = "⚙️  𝙺𝙰𝚁𝙱𝙾𝚃 ⚙️";
 global.botname = "⚙️  𝙺𝙰𝚁𝙱𝙾𝚃 ⚙️";
 global.wm = "© 𝙷𝙴𝚁𝙽𝙰𝙽𝙳𝙴𝚉";

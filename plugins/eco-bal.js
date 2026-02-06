@@ -1,16 +1,19 @@
 import { checkReg } from '../lib/checkReg.js'
 
 const HOJITAS = ['🌿', '🍃', '🍀', '🌱', '☘️']
-const REACCIONES = ['🏛️', '💰', '🏦', '💹', '💳']
+const REACCIONES = ['🏛️', '💰', '🏦', '💹', '💳', '✨', '⚡', '🔥']
 
 function getLeaf() { return HOJITAS[Math.floor(Math.random() * HOJITAS.length)] }
 function getReact() { return REACCIONES[Math.floor(Math.random() * REACCIONES.length)] }
 
 let handler = async (m, { conn }) => {
   let user = global.db.data.users[m.sender]
+  
+  // Verificación de registro rápida
   if (await checkReg(m, user)) return
 
-  await m.react(getReact())
+  // Reacción inmediata
+  m.react(getReact())
 
   let h = getLeaf()
   let cartera = (user.coin || 0)
@@ -22,14 +25,15 @@ let handler = async (m, { conn }) => {
   txt += `> 🏛️ Banco : ${banco.toLocaleString()} 🪙\n`
   txt += `> ✨ Total : ${total.toLocaleString()} 🪙\n\n`
   txt += `> 💎 Diamond : ${(user.diamond || 0).toLocaleString()}\n`
-  txt += `> 🎫 HotPass : ${(user.hotpass || 0).toLocaleString()}`
+  txt += `> 🔥 HotPass : ${(user.hotpass || 0).toLocaleString()}`
 
+  // Envío sin esperas innecesarias
   m.reply(txt)
 }
 
-handler.help = ['balance']
+handler.help = ['bal', 'balance']
 handler.tags = ['economy']
-handler.command = ['bal', 'balance', 'cartera', 'wallet']
+handler.command = ['bal', 'balance']
 handler.register = true
 
 export default handler

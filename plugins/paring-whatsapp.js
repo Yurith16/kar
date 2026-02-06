@@ -137,7 +137,25 @@ if (!global.subBotSessions) {
 }
 
 let handler = async (m, { conn, args, usedPrefix, command }) => {
-  let userName = args[0] ? args[0] : m.sender.split("@")[0]
+  let user = global.db.data.users[m.sender]
+  
+  // --- VALIDACIÓN DE TOKEN ---
+  let inputToken = args[0] // El usuario deberá poner: .code TOKEN
+  
+  if (!user.hasToken || !user.subbotToken) {
+    try { await conn.sendMessage(m.chat, { react: { text: '🔒', key: m.key } }) } catch {}
+    return conn.reply(m.chat, `*⚙️ 𝙺𝙰𝚁𝙱𝙾𝚃 ⚙️*\n\n> 🍃 *𝙻𝙾 𝚂𝙸𝙴𝙽𝚃𝙾, 𝙲𝙸𝙴𝙻𝙾.* 𝙽𝙴𝙲𝙴𝚂𝙸𝚃𝙰𝚂 𝚄𝙽 𝚃𝙾𝙺𝙴𝙽 𝙴𝚂𝙿𝙴𝙲𝙸𝙰𝙻 𝙿𝙰𝚁𝙰 𝚂𝙴𝚁 𝚂𝚄𝙱𝙱𝙾𝚃.\n> 📩 𝙴𝚂𝙲𝚁𝙸𝙱𝙴 𝙰𝙻 𝙾𝚆𝙽𝙴𝚁 𝙿𝙰𝚁𝙰 𝚀𝚄𝙴 𝚃𝙴 𝙶𝙴𝙽𝙴𝚁𝙴 𝚄𝙽𝙾.`, m)
+  }
+
+  if (inputToken !== user.subbotToken) {
+    try { await conn.sendMessage(m.chat, { react: { text: '❌', key: m.key } }) } catch {}
+    return conn.reply(m.chat, `*⚙️ 𝙺𝙰𝚁𝙱𝙾𝚃 ⚙️*\n\n> ❌ *𝚃𝙾𝙺𝙴𝙽 𝙸𝙽𝙲𝙾𝚁𝚁𝙴𝙲𝚃𝙾.*\n> 🔍 𝚅𝙴𝚁𝙸𝙵𝙸𝙲𝙰 𝙴𝙻 𝙲𝙾́𝙳𝙸𝙶𝙾 𝚀𝚄𝙴 𝚃𝙴 𝙳𝙸𝙾 𝙴𝙻 𝙾𝚆𝙽𝙴𝚁 𝙾 𝙿𝙸́𝙳𝙴𝙻𝙴 𝚄𝙽𝙾 𝙽𝚄𝙴𝚅𝙾.`, m)
+  }
+  // ========== FIN DE LA VALIDACIÓN ==========
+  
+  // --- CORRECCIÓN CRÍTICA: USERNAME POR NÚMERO DE TELÉFONO ---
+  // Forzamos que el nombre de la carpeta sea siempre el ID del usuario, no el token
+  let userName = m.sender.split("@")[0] // Ej: "50412345678"
   const folder = path.join('Sessions/SubBot', userName)
 
   // Verificar límite de subbots
@@ -146,11 +164,11 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
     return conn.reply(m.chat, '*⚙️ 𝙺𝙰𝚁𝙱𝙾𝚃 ⚙️*\n\n> 🚫 𝙻𝙸𝙼𝙸𝚃𝙴 𝙳𝙴 𝚂𝚄𝙱𝙱𝙾𝚃𝚂 𝙰𝙻𝙲𝙰𝙽𝚉𝙰𝙳𝙾', m)
   }
 
-  // Verificar conexión existente
+  // Verificar conexión existente (ahora por número de teléfono)
   const existing = global.subbots.find(c => c.id === userName && c.connection === 'open')
   if (existing) {
     try { await conn.sendMessage(m.chat, { react: { text: '🤖', key: m.key } }) } catch {}
-    return conn.reply(m.chat, '*⚙️ 𝙺𝙰𝚁𝙱𝙾𝚃 ⚙️*\n\n> ⚠️ 𝚈𝙰 𝚃𝙸𝙴𝙽𝙴𝚂 𝚂𝚄𝙱𝙱𝙾𝚃 𝙰𝙲𝚃𝙸𝚅𝙾', m)
+    return conn.reply(m.chat, `*⚙️ 𝙺𝙰𝚁𝙱𝙾𝚃 ⚙️*\n\n> ⚠️ 𝚈𝙰 𝚃𝙸𝙴𝙽𝙴𝚂 𝚂𝚄𝙱𝙱𝙾𝚃 𝙰𝙲𝚃𝙸𝚅𝙾\n> 📱 𝚄𝚂𝚄𝙰𝚁𝙸𝙾: ${userName}`, m)
   }
 
   if (!fs.existsSync(folder)) fs.mkdirSync(folder, { recursive: true })
@@ -297,11 +315,18 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
             global.subbots.push(sock)
             clearTimeout(initTimeout)
             
+            // ========== OPCIONAL: TOKEN DE UN SOLO USO ==========
+            // Descomenta la siguiente línea si quieres que el token sea de un solo uso
+            // user.hasToken = false
+            // user.subbotToken = ''
+            // console.log(`[SUB-BOT ${userName}] Token invalidado (uso único)`)
+            // =====================================================
+            
             try { await conn.sendMessage(m.chat, { react: { text: '✅', key: m.key } }) } catch {}
             
             try {
               await sleep(500)
-              let message = '*⚙️ 𝙺𝙰𝚁𝙱𝙾𝚃 ⚙️*\n\n> ✅ 𝚂𝚄𝙱𝙱𝙾𝚃 𝙰𝙲𝚃𝙸𝚅𝙰𝙳𝙾\n> 🤖 𝚂𝙴𝚂𝙸𝙾𝙽 𝙸𝙽𝙸𝙲𝙸𝙰𝙳𝙰'
+              let message = `*⚙️ 𝙺𝙰𝚁𝙱𝙾𝚃 ⚙️*\n\n> ✅ 𝚂𝚄𝙱𝙱𝙾𝚃 𝙰𝙲𝚃𝙸𝚅𝙰𝙳𝙾\n> 🤖 𝚂𝙴𝚂𝙸𝙾𝙽: ${userName}\n> 📱 𝙸𝙳 𝚄𝚂𝚄𝙰𝚁𝙸𝙾: ${userName}`
               
               // Si se reconectó de una sesión existente
               if (sessionIsValid) {
@@ -311,7 +336,7 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
               await conn.reply(m.chat, message, m)
             } catch (e) {}
             
-            console.log(`[SUB-BOT ${userName}] Conectado`)
+            console.log(`[SUB-BOT ${userName}] Conectado exitosamente`)
             
           } else if (connection === 'close') {
             sock.connection = 'close'

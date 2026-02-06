@@ -4,35 +4,30 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     let user = global.db.data.users[m.sender]
     if (user?.registered) return m.reply(`> 🎀 *Aviso:* Ya estás registrado, cielo.`)
 
-    // Formato: nombre.edad.genero
-    let Reg = /([a-zA-ZáéíóúÁÉÍÓÚñÑ\s]{3,20})[.]([0-9]{1,2})[.](hombre|mujer|otro)/i
-    let matches = text.match(Reg)
-
-    if (!text || !matches) {
-        return m.reply(`> 🎀 *Uso correcto:*\n> \`${usedPrefix + command} nombre.edad.genero\`\n\n*Ejemplo:*\n> \`${usedPrefix + command} KarBot.19.mujer\``)
+    // Validación de nombre: entre 3 y 30 caracteres
+    if (!text || text.length < 3) {
+        return m.reply(`> 🎀 *Uso correcto:*\n> \`${usedPrefix + command} nombre\`\n\n*Ejemplo:*\n> \`${usedPrefix + command} KarBot\``)
     }
 
-    let [_, name, age, genre] = matches
-    age = parseInt(age)
+    if (text.length > 30) return m.reply("> 🎀 *Error:* El nombre es demasiado largo, máximo 30 caracteres.")
 
-    if (age < 10 || age > 85) return m.reply("> 🎀 Edad inválida (10-85 años).")
-    
-    user.registeredName = name.trim()
-    user.age = age
-    user.genre = genre.toLowerCase()
+    // Guardar datos básicos
+    user.registeredName = text.trim()
+    user.age = 0 // Valor por defecto
+    user.genre = 'no definido' // Valor por defecto
     user.registered = true
     user.regDate = new Date().toLocaleDateString('es-ES')
 
-    // Bono inicial
+    // Bono inicial de KarBot
     user.coin = (user.coin || 0) + 10000
     user.diamond = (user.diamond || 0) + 5
     user.hotpass = (user.hotpass || 0) + 10
 
     await m.react('✅')
+    
     let txt = `✅ *REGISTRO EXITOSO*\n\n`
     txt += `> *Nombre:* ${user.registeredName}\n`
-    txt += `> *Edad:* ${user.age} años\n`
-    txt += `> *Género:* ${user.genre}\n\n`
+    txt += `> *Fecha:* ${user.regDate}\n\n`
     txt += `🎁 *BONO:* +10k Coins, +5 Dmd, +10 HotPass.`
 
     await m.reply(txt)

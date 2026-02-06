@@ -133,7 +133,7 @@ async function sendOwnerNotification(sock, message) {
       else if (typeof ownerInfo === 'string') ownerNumber = ownerInfo
       if (ownerNumber && ownerNumber.length > 5) {
         const ownerJid = ownerNumber.includes('@s.whatsapp.net') ? ownerNumber : `${ownerNumber.replace(/[^0-9]/g, '')}@s.whatsapp.net`
-        await sock.sendMessage(ownerJid, { text: `🔔 *NOTIFICACIÓN*\n\n${message}` }).catch(() => {})
+        await sock.sendMessage(ownerJid, { text: `*AVISO DE KAR*\n\n${message}` }).catch(() => {})
       }
     }
   } catch (error) {
@@ -281,7 +281,7 @@ async function startBot() {
         console.log(chalk.green.bold(`✅ Conectado: ${userName}`))
         
         // Notificar reinicio
-        const restartMessage = `✅ *BOT REINICIADO*\nConectado: ${userName}\nPlugins: ${Object.keys(global.plugins).length}`
+        const restartMessage = `✅ *karbot esta en linea*\nUsuario: ${userName}\nComandos: ${Object.keys(global.plugins).length}`
         setTimeout(() => sendOwnerNotification(sock, restartMessage), 3000)
         
         // Marcar bot como listo después de 3 segundos
