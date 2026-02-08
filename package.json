@@ -4,9 +4,9 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "build": "npm install"
-  },
+  "start": "node index.js",
+  "build": "npm install && apt-get update && apt-get install -y ffmpeg"
+}
   "engines": {
     "node": ">=18.18"
   },
