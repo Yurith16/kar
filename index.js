@@ -1,3 +1,18 @@
+// Agrega AL PRINCIPIO de tu index.js
+import express from 'express';
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
+
+app.get('/', (req, res) => {
+  res.send('Bot WhatsApp activo');
+});
+
+
 import { fileURLToPath, pathToFileURL } from 'url'
 import path from 'path'
 import os from 'os'
@@ -111,15 +126,11 @@ async function chooseMethod(authDir) {
   if (process.argv.includes('--code')) return 'code'
   if (process.env.LOGIN_MODE === 'qr') return 'qr'
   if (process.env.LOGIN_MODE === 'code') return 'code'
-  let ans
-  do {
-    console.clear()
-    console.log(chalk.yellow('Selecciona método:'))
-    console.log('1. Escanear QR')
-    console.log('2. Código de emparejamiento')
-    ans = await ask('Elige (1 o 2): ')
-  } while (!['1','2'].includes(ans))
-  return ans === '1' ? 'qr' : 'code'
+  
+  // ELIMINA TODO LO DE LA SELECCIÓN INTERACTIVA
+  // Y REEMPLAZA CON ESTO:
+  console.log(chalk.yellow('🔐 Usando método: Código de emparejamiento (automático)'))
+  return 'code' // Siempre usar código
 }
 
 const PROCESS_START_AT = Date.now()
@@ -345,3 +356,9 @@ async function isValidPhoneNumber(number) {
     return false
   }
 }
+
+// Al FINAL del archivo, ANTES de que termine:
+app.listen(PORT, () => {
+  console.log(`✅ Servidor escuchando en puerto: ${PORT}`);
+  console.log('✅ Health check disponible en: /health');
+});
