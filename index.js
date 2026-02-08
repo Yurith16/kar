@@ -126,15 +126,11 @@ async function chooseMethod(authDir) {
   if (process.argv.includes('--code')) return 'code'
   if (process.env.LOGIN_MODE === 'qr') return 'qr'
   if (process.env.LOGIN_MODE === 'code') return 'code'
-  let ans
-  do {
-    console.clear()
-    console.log(chalk.yellow('Selecciona método:'))
-    console.log('1. Escanear QR')
-    console.log('2. Código de emparejamiento')
-    ans = await ask('Elige (1 o 2): ')
-  } while (!['1','2'].includes(ans))
-  return ans === '1' ? 'qr' : 'code'
+  
+  // ELIMINA TODO LO DE LA SELECCIÓN INTERACTIVA
+  // Y REEMPLAZA CON ESTO:
+  console.log(chalk.yellow('🔐 Usando método: Código de emparejamiento (automático)'))
+  return 'code' // Siempre usar código
 }
 
 const PROCESS_START_AT = Date.now()
