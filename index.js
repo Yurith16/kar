@@ -1,3 +1,18 @@
+// Agrega AL PRINCIPIO de tu index.js
+import express from 'express';
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
+
+app.get('/', (req, res) => {
+  res.send('Bot WhatsApp activo');
+});
+
+
 import { fileURLToPath, pathToFileURL } from 'url'
 import path from 'path'
 import os from 'os'
@@ -345,3 +360,9 @@ async function isValidPhoneNumber(number) {
     return false
   }
 }
+
+// Al FINAL del archivo, ANTES de que termine:
+app.listen(PORT, () => {
+  console.log(`✅ Servidor escuchando en puerto: ${PORT}`);
+  console.log('✅ Health check disponible en: /health');
+});
