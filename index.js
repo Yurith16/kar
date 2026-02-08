@@ -1,7 +1,7 @@
 // Agrega AL PRINCIPIO de tu index.js
 import express from 'express';
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = 8000;
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -11,7 +11,6 @@ app.get('/health', (req, res) => {
 app.get('/', (req, res) => {
   res.send('Bot WhatsApp activo');
 });
-
 
 import { fileURLToPath, pathToFileURL } from 'url'
 import path from 'path'
@@ -115,8 +114,9 @@ try {
 }
 
 function ask(question) {
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
-  return new Promise(res => rl.question(question, ans => { rl.close(); res(ans) }))
+  // En Render no hay entrada por teclado, usar QR automático
+  console.log(chalk.yellow(`[Auto] ${question} (usando QR automático)`));
+  return Promise.resolve('1'); // Siempre retorna '1' para QR
 }
 
 async function chooseMethod(authDir) {
@@ -127,10 +127,9 @@ async function chooseMethod(authDir) {
   if (process.env.LOGIN_MODE === 'qr') return 'qr'
   if (process.env.LOGIN_MODE === 'code') return 'code'
   
-  // ELIMINA TODO LO DE LA SELECCIÓN INTERACTIVA
-  // Y REEMPLAZA CON ESTO:
-  console.log(chalk.yellow('🔐 Usando método: Código de emparejamiento (automático)'))
-  return 'code' // Siempre usar código
+  // Usar QR automático en Render
+  console.log(chalk.yellow('🔄 Usando método: QR (automático para Render)'));
+  return 'qr';
 }
 
 const PROCESS_START_AT = Date.now()

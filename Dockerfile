@@ -1,13 +1,6 @@
-FROM node:18-bullseye-slim
+FROM node:18-alpine
 
-# Instalar dependencias
-RUN apt-get update && apt-get install -y \
-    ffmpeg \
-    python3 \
-    make \
-    g++ \
-    git \
-    && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache ffmpeg python3 make g++ git bash
 
 WORKDIR /app
 
@@ -16,12 +9,14 @@ RUN npm ci --only=production --no-audit
 
 COPY . .
 
+# Directorios necesarios
 RUN mkdir -p sessions tmp
 
-ENV NODE_ENV=production \
-    PORT=3000 \
-    LOGIN_MODE=code
+# Koyeb usa puerto 8000 por defecto
+ENV PORT=8000
+ENV NODE_ENV=production
+ENV LOGIN_MODE=qr
 
-EXPOSE 3000
+EXPOSE 8000
 
 CMD ["npm", "start"]
