@@ -2,8 +2,8 @@ import axios from 'axios'
 import yts from 'yt-search'
 import { checkReg } from '../lib/checkReg.js'
 
-let descargasActivas = new Set()
-let globalProcesando = false
+// Control de descargas activas
+let descargaActiva = false
 
 let handler = async (m, { conn, text, usedPrefix, command }) => {
     const user = global.db.data.users[m.sender]
@@ -12,129 +12,100 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
 
     if (!text) {
         await m.react('🤔')
-        return m.reply(`> ¿Qué video desea buscar hoy, cielo? Use: *${usedPrefix}${command}* nombre del video.`)
+        return m.reply(`> ¿Qué video desea descargar hoy, cielo?`)
     }
 
-    if (globalProcesando) {
-        return m.reply(`> ⏳ *¡Paciencia, corazón!* Estoy procesando una descarga pesada en este momento. Inténtalo de nuevo en unos instantes.`)
-    }
-
-    if (descargasActivas.has(m.sender)) {
-        return m.reply(`> ⚠️ *𝗗ΕΤΕΝΤΕ:* Ya tienes una descarga en curso, espera a que termine, cielo.`)
+    // Verificar si ya hay una descarga en curso
+    if (descargaActiva) {
+        await m.react('⏳')
+        return m.reply(`> ⏳ *¡Paciencia, corazón!* Ya estoy procesando un video. Espera a que termine.`)
     }
 
     try {
-        descargasActivas.add(m.sender)
-        await m.react('🔍')
-        
-        let search = await yts(text)
-        if (!search.videos.length) {
-            descargasActivas.delete(m.sender)
-            await m.react('💨')
-            return m.reply(`> ⚡ *Cariño, no encontré nada sobre "${text}".*`)
+        descargaActiva = true
+        await m.react('🎬')
+
+        let videoUrl = text;
+        let videoInfo = null;
+
+        if (!text.includes('youtu.be') && !text.includes('youtube.com')) {
+            const search = await yts(text);
+            if (!search.videos.length) {
+                descargaActiva = false
+                await m.react('💨');
+                return m.reply(`> ⚡ *Cariño, no encontré nada.*`);
+            }
+            videoInfo = search.videos[0];
+            videoUrl = videoInfo.url;
+        } else {
+            const videoId = videoUrl.split('v=')[1]?.split('&')[0] || videoUrl.split('youtu.be/')[1]?.split('?')[0];
+            const search = await yts({ videoId });
+            videoInfo = search.videos[0];
         }
 
-        let videoInfo = search.videos[0]
-        let { title, author, duration, views, ago, thumbnail, url } = videoInfo
+        const { title, author, duration, views, ago, thumbnail, url } = videoInfo;
 
-        // Restricción de 30 minutos
-        if (duration.seconds > 1800) {
-            descargasActivas.delete(m.sender)
-            await m.react('❌')
-            return m.reply(`> 🌪️ *Vaya drama...* Solo puedo descargar videos menores o iguales a *30 minutos*, corazón.`)
+        // RESTRICCIÓN DE DURACIÓN: 10 MINUTOS (600 segundos)
+        if (duration.seconds > 600) {
+            descargaActiva = false
+            await m.react('❌');
+            return m.reply(`> 🌪️ *El video es muy largo, corazón. Máximo 10 minutos.*`);
         }
 
-        await m.react('⌛')
-        globalProcesando = true
-
-        const videoDetails = `> 🎵 *「🌱」 ${title}*\n\n` +
+        const videoDetails = `> 🎬 *「🌱」 ${title}*\n\n` +
             `> 🍃 *Canal:* » ${author.name}\n` +
             `> ⚘ *Duración:* » ${duration.timestamp}\n` +
             `> 🌼 *Vistas:* » ${(views || 0).toLocaleString()}\n` +
             `> 🍀 *Publicado:* » ${ago || 'Reciente'}\n` +
-            `> 🌿 *Enlace:* » ${url}\n\n` +
-            `> ⏳ _ᴇsᴛᴏʏ ᴘʀᴏᴄᴇsᴀɴᴅᴏ sᴜ ᴘᴇᴅɪᴅᴏ... ᴘᴀᴄɪᴇɴᴄɪᴀ_`
+            `> 🌿 *Enlace:* » ${url}`;
 
         await conn.sendMessage(m.chat, {
             image: { url: thumbnail },
             caption: videoDetails
-        }, { quoted: m })
+        }, { quoted: m });
 
-        let download_url = null
-        let size = "0 MB"
-        let intentos = 0
-        const maxIntentos = 5 // Subimos a 5 intentos por si Ananta está lenta
+        await m.react('⬇️');
 
-        while (intentos < maxIntentos) {
-            await m.react('⏳')
-            
-            try {
-                let res = await axios({
-                    method: 'get',
-                    url: `https://api.ananta.qzz.io/api/yt-dl-v2?url=${encodeURIComponent(url)}&format=mp4`,
-                    headers: { "x-api-key": "antebryxivz14" }
-                })
-
-                let apiData = res.data.data
-                // Validación estricta de la URL
-                if (res.data.success && apiData.download_url && 
-                    apiData.download_url !== "Waiting..." && 
-                    apiData.download_url !== "In Processing...") {
-                    download_url = apiData.download_url
-                    size = apiData.size || "0 MB"
-                    break
-                }
-            } catch (e) {
-                console.log('Reintentando conexión...')
-            }
-
-            intentos++
-            if (intentos < maxIntentos) {
-                await m.react('⌛')
-                await new Promise(resolve => setTimeout(resolve, 6000)) // 6 segundos entre reintentos
-            }
+        // === API PARA VIDEO ===
+        const apiResponse = await axios.get(`https://api-aswin-sparky.koyeb.app/api/downloader/ytv?url=${encodeURIComponent(videoUrl)}`, {
+            timeout: 30000
+        });
+        
+        if (!apiResponse.data?.status || !apiResponse.data?.data?.url) {
+            throw new Error('Servicio no disponible');
         }
 
-        if (!download_url || download_url.includes('Processing')) throw new Error('URL_INVALIDA')
+        const videoDownloadUrl = apiResponse.data.data.url;
 
-        const fileSizeMB = parseFloat(size.replace(/[^\d.-]/g, '')) || 0
-        if (fileSizeMB > 500) throw new Error('PESO_EXCEDIDO')
+        const videoResponse = await axios.get(videoDownloadUrl, { 
+            responseType: 'arraybuffer',
+            timeout: 90000 // 90 segundos para videos largos
+        });
 
-        await m.react('📥')
-        const safeTitle = `${title.substring(0, 50)}`.replace(/[<>:"/\\|?*]/g, '')
+        const videoData = videoResponse.data;
 
-        // Usamos { url: download_url } para que WhatsApp maneje la descarga y no el servidor
-        if (fileSizeMB < 40 && fileSizeMB !== 0) {
-            await conn.sendMessage(m.chat, {
-                video: { url: download_url },
-                caption: `> ✨ *Aquí tienes tu video, cielo.*`,
-                mimetype: 'video/mp4',
-                fileName: `${safeTitle}.mp4`
-            }, { quoted: m })
-        } else {
-            await conn.sendMessage(m.chat, {
-                document: { url: download_url },
-                mimetype: 'video/mp4',
-                fileName: `${safeTitle}.mp4`,
-                caption: `> *Video enviado como documento*`
-            }, { quoted: m })
-        }
+        // ENVIAR COMO VIDEO NORMAL
+        await conn.sendMessage(m.chat, {
+            video: videoData,
+            caption: `> ✅ *¡Video descargado, corazón!*\n> 🎬 ${title}`,
+            mimetype: 'video/mp4'
+        }, { quoted: m });
 
-        await m.react('✅')
+        await m.react('✅');
 
-    } catch (e) {
-        console.error('Error en Play2:', e)
-        await m.react('❌')
-        await m.reply(`> 🌪️ *Vaya drama...* No pude procesar el video en este momento. Inténtalo más tarde, cielo.`)
+    } catch (error) {
+        console.error('[Video Error]:', error.message);
+        await m.react('❌');
+        await m.reply(`> 🌪️ *Vaya drama...* Hubo un fallo técnico y no pude obtener el video.`);
     } finally {
-        descargasActivas.delete(m.sender)
-        globalProcesando = false
+        // Siempre liberar el control de descarga
+        descargaActiva = false
     }
 }
 
-handler.help = ['play2']
-handler.tags = ['downloader']
-handler.command = ['play2']
+handler.help = ['ytv']
+handler.tags = ['downloader']  
+handler.command = ['play2', 'ytmp4']
 handler.group = true
 
 export default handler

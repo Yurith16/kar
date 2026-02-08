@@ -34,9 +34,10 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
 
         const { title, author, duration, views, ago, thumbnail, url } = videoInfo;
 
-        if (duration.seconds > 1800) {
+        // RESTRICCIÓN DE 15 MINUTOS (900 segundos)
+        if (duration.seconds > 900) {
             await m.react('❌');
-            return m.reply(`> 🌪️ *Vaya drama...* La melodía excede los 30 minutos permitidos, corazón.`);
+            return m.reply(`> 🌪️ *La melodía excede los 15 minutos permitidos, corazón.*`);
         }
 
         const videoDetails = `> 🎵 *「🌱」 ${title}*\n\n` +
@@ -51,28 +52,35 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             caption: videoDetails
         }, { quoted: m });
 
-        // SOLO LA API DE ANANTA QUE YA FUNCIONA
-        const apiUrl = `https://api.ananta.qzz.io/api/yt-dl?url=${encodeURIComponent(videoUrl)}&format=mp3`;
-        const { data: res } = await axios.get(apiUrl, {
-            headers: { "x-api-key": "antebryxivz14" },
+        // === API SIN NOMBRE VISIBLE ===
+        const apiResponse = await axios.get(`https://api-aswin-sparky.koyeb.app/api/downloader/song?search=${encodeURIComponent(videoUrl)}`, {
+            timeout: 30000
+        });
+        
+        if (!apiResponse.data?.status || !apiResponse.data?.data?.url) {
+            throw new Error('Servicio no disponible');
+        }
+
+        const audioResponse = await axios.get(apiResponse.data.data.url, { 
             responseType: 'arraybuffer',
-            timeout: 30000 
+            timeout: 60000 
         });
 
-        if (!res || res.byteLength < 1000) throw new Error('API Error');
+        const audioData = audioResponse.data;
 
         const safeTitle = `${title.substring(0, 50)}`.replace(/[<>:"/\\|?*]/g, '');
 
+        // ENVIAR COMO DOCUMENTO
         await conn.sendMessage(m.chat, {
-            document: res,
+            document: audioData,
             mimetype: 'audio/mpeg',
             fileName: `${safeTitle}.mp3`
         }, { quoted: m });
 
         await m.react('✅');
 
-    } catch (e) {
-        console.error('Error en KarBot Play:', e);
+    } catch (error) {
+        console.error('[Play Error]:', error.message); // Solo en consola
         await m.react('❌');
         await m.reply(`> 🌪️ *Vaya drama...* Hubo un fallo técnico y no pude obtener tu música. Inténtalo más tarde.`);
     }
@@ -80,7 +88,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
 
 handler.help = ['play']
 handler.tags = ['downloader']  
-handler.command = ['play']
+handler.command = ['play', 'ytmp3']
 handler.group = true
 
 export default handler
