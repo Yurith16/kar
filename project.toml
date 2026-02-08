@@ -1,0 +1,13 @@
+[project]
+name = "whatsapp-bot"
+
+[[build.env]]
+name = "NODE_ENV"
+value = "production"
+
+[[build.env]]
+name = "NODE_VERSION"
+value = "18.18.0"
+
+[[build.buildpacks]]
+uri = "urn:cnb:registry:heroku/nodejs"
