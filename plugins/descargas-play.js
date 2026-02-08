@@ -5,23 +5,19 @@ import { checkReg } from '../lib/checkReg.js'
 let handler = async (m, { conn, text, usedPrefix, command }) => {
     const user = global.db.data.users[m.sender]
 
-    // 1. Verificación de registro
     if (await checkReg(m, user)) return
 
-    // 2. Reacción de duda y ayuda si no hay texto
     if (!text) {
         await m.react('🤔')
         return m.reply(`> ¿Qué melodía desea probar hoy, cielo?`)
     }
 
     try {
-        // Reacción inicial de procesamiento
         await m.react('🎧')
 
         let videoUrl = text;
         let videoInfo = null;
 
-        // Búsqueda en YouTube
         if (!text.includes('youtu.be') && !text.includes('youtube.com')) {
             const search = await yts(text);
             if (!search.videos.length) {
@@ -38,13 +34,11 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
 
         const { title, author, duration, views, ago, thumbnail, url } = videoInfo;
 
-        // --- RESTRICCIÓN DE MEDIA HORA (1800 SEGUNDOS) ---
         if (duration.seconds > 1800) {
             await m.react('❌');
             return m.reply(`> 🌪️ *Vaya drama...* La melodía excede los 30 minutos permitidos, corazón.`);
         }
 
-        // --- DISEÑO DE DETALLES KARBOT ---
         const videoDetails = `> 🎵 *「🌱」 ${title}*\n\n` +
             `> 🍃 *Canal:* » ${author.name}\n` +
             `> ⚘ *Duración:* » ${duration.timestamp}\n` +
@@ -57,55 +51,25 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             caption: videoDetails
         }, { quoted: m });
 
-        let audioData;
-        let success = false;
+        // SOLO LA API DE ANANTA QUE YA FUNCIONA
+        const apiUrl = `https://api.ananta.qzz.io/api/yt-dl?url=${encodeURIComponent(videoUrl)}&format=mp3`;
+        const { data: res } = await axios.get(apiUrl, {
+            headers: { "x-api-key": "antebryxivz14" },
+            responseType: 'arraybuffer',
+            timeout: 30000 
+        });
 
-        // === MOTOR 1: API PRINCETECHN ===
-        try {
-            const apiUrl = `https://api.princetechn.com/api/download/yta?apikey=prince&url=${encodeURIComponent(videoUrl)}`;
-            const { data } = await axios.get(apiUrl);
+        if (!res || res.byteLength < 1000) throw new Error('API Error');
 
-            if (data.success && data.result?.download_url) {
-                const audioResponse = await axios.get(data.result.download_url, { responseType: 'arraybuffer' });
-                audioData = audioResponse.data;
-                success = true;
-            }
-        } catch (e) {
-            console.log('API PrinceTechn falló...');
-        }
+        const safeTitle = `${title.substring(0, 50)}`.replace(/[<>:"/\\|?*]/g, '');
 
-        // === MOTOR 2: API ANANTA (Backup) ===
-        if (!success) {
-            try {
-                const resAnanta = await axios({
-                    method: 'get',
-                    url: `https://api.ananta.qzz.io/api/yt-mp3?url=${encodeURIComponent(videoUrl)}`,
-                    headers: { "x-api-key": "antebryxivz14" },
-                    responseType: 'arraybuffer',
-                    timeout: 30000 
-                });
-                if (resAnanta.data) {
-                    audioData = resAnanta.data;
-                    success = true;
-                }
-            } catch (e) {
-                console.log('API Ananta falló...');
-            }
-        }
+        await conn.sendMessage(m.chat, {
+            document: res,
+            mimetype: 'audio/mpeg',
+            fileName: `${safeTitle}.mp3`
+        }, { quoted: m });
 
-        if (success && audioData) {
-            const safeTitle = `${title.substring(0, 50)}`.replace(/[<>:"/\\|?*]/g, '');
-
-            await conn.sendMessage(m.chat, {
-                document: audioData,
-                mimetype: 'audio/mpeg',
-                fileName: `${safeTitle}.mp3`
-            }, { quoted: m });
-
-            await m.react('✅');
-        } else {
-            throw new Error('Sin audio');
-        }
+        await m.react('✅');
 
     } catch (e) {
         console.error('Error en KarBot Play:', e);
