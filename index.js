@@ -1,17 +1,3 @@
-// Agrega AL PRINCIPIO de tu index.js
-import express from 'express';
-const app = express();
-const PORT = 8000;
-
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.status(200).send('OK');
-});
-
-app.get('/', (req, res) => {
-  res.send('Bot WhatsApp activo');
-});
-
 import { fileURLToPath, pathToFileURL } from 'url'
 import path from 'path'
 import os from 'os'
@@ -114,9 +100,8 @@ try {
 }
 
 function ask(question) {
-  // En Render no hay entrada por teclado, usar QR automático
-  console.log(chalk.yellow(`[Auto] ${question} (usando QR automático)`));
-  return Promise.resolve('1'); // Siempre retorna '1' para QR
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
+  return new Promise(res => rl.question(question, ans => { rl.close(); res(ans) }))
 }
 
 async function chooseMethod(authDir) {
@@ -126,10 +111,15 @@ async function chooseMethod(authDir) {
   if (process.argv.includes('--code')) return 'code'
   if (process.env.LOGIN_MODE === 'qr') return 'qr'
   if (process.env.LOGIN_MODE === 'code') return 'code'
-  
-  // Usar QR automático en Render
-  console.log(chalk.yellow('🔄 Usando método: QR (automático para Render)'));
-  return 'qr';
+  let ans
+  do {
+    console.clear()
+    console.log(chalk.yellow('Selecciona método:'))
+    console.log('1. Escanear QR')
+    console.log('2. Código de emparejamiento')
+    ans = await ask('Elige (1 o 2): ')
+  } while (!['1','2'].includes(ans))
+  return ans === '1' ? 'qr' : 'code'
 }
 
 const PROCESS_START_AT = Date.now()
@@ -143,7 +133,7 @@ async function sendOwnerNotification(sock, message) {
       else if (typeof ownerInfo === 'string') ownerNumber = ownerInfo
       if (ownerNumber && ownerNumber.length > 5) {
         const ownerJid = ownerNumber.includes('@s.whatsapp.net') ? ownerNumber : `${ownerNumber.replace(/[^0-9]/g, '')}@s.whatsapp.net`
-        await sock.sendMessage(ownerJid, { text: `*AVISO DE KAR*\n\n${message}` }).catch(() => {})
+        await sock.sendMessage(ownerJid, { text: `🔔 *NOTIFICACIÓN*\n\n${message}` }).catch(() => {})
       }
     }
   } catch (error) {
@@ -291,7 +281,7 @@ async function startBot() {
         console.log(chalk.green.bold(`✅ Conectado: ${userName}`))
         
         // Notificar reinicio
-        const restartMessage = `✅ *karbot esta en linea*\nUsuario: ${userName}\nComandos: ${Object.keys(global.plugins).length}`
+        const restartMessage = `✅ *BOT REINICIADO*\nConectado: ${userName}\nPlugins: ${Object.keys(global.plugins).length}`
         setTimeout(() => sendOwnerNotification(sock, restartMessage), 3000)
         
         // Marcar bot como listo después de 3 segundos
@@ -355,9 +345,3 @@ async function isValidPhoneNumber(number) {
     return false
   }
 }
-
-// Al FINAL del archivo, ANTES de que termine:
-app.listen(PORT, () => {
-  console.log(`✅ Servidor escuchando en puerto: ${PORT}`);
-  console.log('✅ Health check disponible en: /health');
-});

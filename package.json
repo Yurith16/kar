@@ -1,5 +1,5 @@
 {
-  "name": "Kar",
+  "name": "Itsuki-NakanoV3",
   "version": "7.5.2",
   "type": "module",
   "main": "index.js",
@@ -23,6 +23,7 @@
     "chalk": "^5.3.0",
     "cheerio": "npm:cheerio@1.0.0-rc.12",
     "dotenv": "^16.0.3",
+    "ffmpeg-static": "^5.3.0",
     "file-type": "^18.7.0",
     "fluent-ffmpeg": "^2.1.2",
     "form-data": "^4.0.0",

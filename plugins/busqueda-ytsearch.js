@@ -29,9 +29,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         // Tomamos los primeros 5 resultados
         const videos = results.videos.slice(0, 5);
 
-        // Mensaje de encabezado
-        await m.reply(`🎬 *Resultados para:* ${text}\n\n_Aquí tienes lo que encontré para ti, bombón..._`);
-
         // 2. Enviar los videos encontrados con el diseño de naturaleza
         for (const video of videos) {
             const videoDetails = `> 🎵 *「🌱」 ${video.title}*\n\n` +
