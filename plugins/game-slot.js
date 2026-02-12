@@ -24,60 +24,127 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     
     // --- SISTEMA DE PROBABILIDAD (30% Win Rate) ---
     let ganar = Math.random() < 0.30 
-    let a, b, c;
+    
+    // Matriz 3x3
+    let matrix = [
+        [], // Fila 1
+        [], // Fila 2
+        []  // Fila 3
+    ]
 
     if (ganar) {
-        // Generar una combinación ganadora (2 o 3 iguales)
-        a = emojis[Math.floor(Math.random() * emojis.length)]
-        let triple = Math.random() < 0.15 // Solo 15% de las victorias son Jackpots
-        if (triple) {
-            b = a
-            c = a
-        } else {
-            b = a
-            // El tercero es diferente para que sea "par"
-            do { c = emojis[Math.floor(Math.random() * emojis.length)] } while (c === a)
+        // GANAR: Asegurar al menos una línea ganadora
+        let lineaGanadora = Math.floor(Math.random() * 3)
+        let emojiGanador = emojis[Math.floor(Math.random() * emojis.length)]
+        
+        // Llenar la línea ganadora con el mismo emoji
+        matrix[lineaGanadora] = [emojiGanador, emojiGanador, emojiGanador]
+        
+        // Llenar las otras líneas aleatoriamente
+        for (let i = 0; i < 3; i++) {
+            if (i !== lineaGanadora) {
+                matrix[i] = [
+                    emojis[Math.floor(Math.random() * emojis.length)],
+                    emojis[Math.floor(Math.random() * emojis.length)],
+                    emojis[Math.floor(Math.random() * emojis.length)]
+                ]
+            }
         }
     } else {
-        // Forzar pérdida (todos diferentes)
-        a = emojis[Math.floor(Math.random() * emojis.length)]
-        do { b = emojis[Math.floor(Math.random() * emojis.length)] } while (b === a)
-        do { c = emojis[Math.floor(Math.random() * emojis.length)] } while (c === a || c === b)
+        // PERDER: No hay líneas ganadoras
+        for (let i = 0; i < 3; i++) {
+            let fila = []
+            for (let j = 0; j < 3; j++) {
+                let emoji
+                do {
+                    emoji = emojis[Math.floor(Math.random() * emojis.length)]
+                } while (fila.includes(emoji))
+                fila.push(emoji)
+            }
+            matrix[i] = fila
+        }
     }
 
     user.coin -= apuesta
     await m.react('🎰')
 
-    let spinning = `🎰 *GIRO DE FORTUNA* 🎰\n\n`
-    spinning += `> 🎰 | ${a} | ${b} | ${c} | 🎰\n\n`
+    // 🎰 DISEÑO SIMPLE Y LIMPIO 🎰
+    let spinning = `🎰 *SLOTS* 🎰\n\n`
     
-    let win = (a === b || b === c || a === c)
-    let reward = 0
-    let diamondBonus = 0
+    // Matriz 3x3 simple - solo emojis
+    spinning += `   ${matrix[0][0]}  ${matrix[0][1]}  ${matrix[0][2]}\n`
+    spinning += `   ${matrix[1][0]}  ${matrix[1][1]}  ${matrix[1][2]}\n`
+    spinning += `   ${matrix[2][0]}  ${matrix[2][1]}  ${matrix[2][2]}\n\n`
 
-    if (win) {
-        if (a === b && b === c) {
-            // JACKPOT
-            if (a === "💎") { reward = apuesta * 10; diamondBonus = 5 }
-            else if (a === "🎰") { reward = apuesta * 15; diamondBonus = 10 }
-            else { reward = apuesta * 5 }
-        } else {
-            // PAR
-            reward = Math.floor(apuesta * 1.5)
+    // Verificar líneas ganadoras
+    let gano = false
+    let premio = 0
+    let diamantes = 0
+
+    // Revisar filas
+    for (let i = 0; i < 3; i++) {
+        if (matrix[i][0] === matrix[i][1] && matrix[i][1] === matrix[i][2]) {
+            gano = true
+            let multiplicador = 0
+            if (matrix[i][0] === "💎") multiplicador = 10
+            else if (matrix[i][0] === "🎰") multiplicador = 15
+            else multiplicador = 5
+            premio += apuesta * multiplicador
+            if (matrix[i][0] === "💎") diamantes += 5
+            if (matrix[i][0] === "🎰") diamantes += 10
         }
+    }
 
-        user.coin += reward
-        user.diamond = (user.diamond || 0) + diamondBonus
+    // Revisar columnas
+    for (let j = 0; j < 3; j++) {
+        if (matrix[0][j] === matrix[1][j] && matrix[1][j] === matrix[2][j]) {
+            gano = true
+            let multiplicador = 0
+            if (matrix[0][j] === "💎") multiplicador = 10
+            else if (matrix[0][j] === "🎰") multiplicador = 15
+            else multiplicador = 5
+            premio += apuesta * multiplicador
+            if (matrix[0][j] === "💎") diamantes += 5
+            if (matrix[0][j] === "🎰") diamantes += 10
+        }
+    }
+
+    // Revisar diagonales
+    if (matrix[0][0] === matrix[1][1] && matrix[1][1] === matrix[2][2]) {
+        gano = true
+        let multiplicador = 0
+        if (matrix[0][0] === "💎") multiplicador = 10
+        else if (matrix[0][0] === "🎰") multiplicador = 15
+        else multiplicador = 5
+        premio += apuesta * multiplicador
+        if (matrix[0][0] === "💎") diamantes += 5
+        if (matrix[0][0] === "🎰") diamantes += 10
+    }
+    
+    if (matrix[0][2] === matrix[1][1] && matrix[1][1] === matrix[2][0]) {
+        gano = true
+        let multiplicador = 0
+        if (matrix[0][2] === "💎") multiplicador = 10
+        else if (matrix[0][2] === "🎰") multiplicador = 15
+        else multiplicador = 5
+        premio += apuesta * multiplicador
+        if (matrix[0][2] === "💎") diamantes += 5
+        if (matrix[0][2] === "🎰") diamantes += 10
+    }
+
+    if (gano) {
+        user.coin += premio
+        user.diamond = (user.diamond || 0) + diamantes
         await m.react('🎉')
         
-        spinning += `✨ *¡GANASTE!* ✨\n`
-        spinning += `> *Premio:* +${reward.toLocaleString()} Coins 🪙\n`
-        if (diamondBonus > 0) spinning += `> *Bono:* +${diamondBonus} 💎\n`
+        spinning += `✨ *¡FELICIDADES, AMOR!* ✨\n`
+        spinning += `> 🪙 *Premio:* +${premio.toLocaleString()} Coins\n`
+        if (diamantes > 0) spinning += `> 💎 *Bono:* +${diamantes} Diamantes\n`
     } else {
         await m.react('❌')
-        spinning += `🥀 *PERDISTE...*\n`
-        spinning += `> *- ${apuesta.toLocaleString()} Coins*\n\n`
-        spinning += `_Suerte para la próxima, amor._`
+        spinning += `🥀 *Perdiste...*\n`
+        spinning += `> 💔 *-${apuesta.toLocaleString()} Coins*\n`
+        spinning += `\n_La próxima será, cielo._`
     }
 
     await m.reply(spinning)

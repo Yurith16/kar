@@ -10,42 +10,50 @@ const handler = async (m, { conn, isAdmin, isBotAdmin, isROwner, usedPrefix, com
   // Verificación de registro
   if (await checkReg(m, user)) return
   
-  // Si el comando está desactivado globalmente
-  if (!global.autoadminGlobal && !isROwner) {
-    return conn.reply(m.chat, '> Sistema desactivado.', m)
+  // 🔒 RESTRICCIÓN TOTAL: Solo el Owner puede usar este comando
+  if (!isROwner) {
+    await conn.sendMessage(m.chat, { react: { text: '🚫', key: m.key } })
+    return m.reply(`> 🔒 *Lo siento, cielo, pero este comando es de uso exclusivo para mi creador.*`)
   }
 
-  // Si el bot no es admin
+  // Si el comando está desactivado globalmente (aunque seas owner, por si quieres probar el switch)
+  if (!global.autoadminGlobal) {
+    return conn.reply(m.chat, '> 🌪️ *Vaya drama... El sistema de autoadmin está desactivado globalmente.*', m)
+  }
+
+  // Si el bot no es admin (Sin esto no podemos dar poder)
   if (!isBotAdmin) {
-    return conn.reply(m.chat, '> Necesito ser admin.', m)
+    return conn.reply(m.chat, '> ⚙️ *No puedo darte admin si yo misma no lo soy, corazón.*', m)
   }
 
-  // Si ya es admin
+  // Si ya eres admin
   if (isAdmin) {
-    return conn.reply(m.chat, '> Ya eres admin.', m)
+    return conn.reply(m.chat, '> *Pero si ya tienes el mando aquí, cielo. Ya eres admin.*', m)
   }
 
   try {
-    // Reacción inicial
+    // Reacción de proceso
     await m.react('🔧')
     
-    // Promover usuario
+    // Promover al Owner
     await conn.groupParticipantsUpdate(m.chat, [m.sender], 'promote')
     
-    // El engranaje final de KarBot ⚙️
+    // Reacción de éxito
     await m.react('⚙️')
     
-    await conn.reply(m.chat, '> Ahora eres admin.', m)
+    await conn.reply(m.chat, '> ✅ *Privilegios concedidos. Ahora tienes el control total, mi Owner.*', m)
 
   } catch (error) {
+    console.error(error)
     await m.react('❌')
-    await conn.reply(m.chat, '> Lo siento, hubo un error.', m)
+    await conn.reply(m.chat, '> 🌪️ *Hubo un fallo técnico al intentar darte el rango.*', m)
   }
 }
 
 handler.help = ['autoadmin']
-handler.tags = ['group', 'owner']
+handler.tags = ['owner']
 handler.command = ['autoadmin']
 handler.group = true
+handler.owner = true // Esto refuerza que solo tú puedas verlo en el menú
 
 export default handler
