@@ -1,38 +1,50 @@
 FROM node:18-alpine
 
-# Instalar dependencias
+# Instalar dependencias necesarias para WhatsApp
 RUN apk add --no-cache \
     ffmpeg \
     python3 \
     make \
     g++ \
     git \
-    bash
+    bash \
+    chromium \
+    nss \
+    freetype \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont \
+    && rm -rf /var/cache/apk/*
 
 # Crear directorio de trabajo
 WORKDIR /app
 
-# Copiar dependencias primero
+# Copiar package files
 COPY package*.json ./
-RUN npm ci --only=production --no-audit
+COPY yarn.lock* ./
+COPY npm-shrinkwrap.json* ./
 
-# Copiar código
+# Instalar dependencias
+RUN npm ci --only=production --no-audit --omit=dev || \
+    npm install --production --no-audit
+
+# Copiar código fuente
 COPY . .
 
-# Directorios necesarios
-RUN mkdir -p sessions tmp
+# Crear directorios necesarios
+RUN mkdir -p sessions tmp auth_info && \
+    chmod -R 777 sessions tmp auth_info
 
-# Variables de entorno
-ENV PORT=7860
+# Variables de entorno para Back4app
 ENV NODE_ENV=production
+ENV PORT=3000
 ENV LOGIN_MODE=code
+ENV CHROME_PATH=/usr/bin/chromium-browser
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 
-# Exponer puerto (HF usa 7860)
-EXPOSE 7860
-
-# Health check (opcional)
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:7860/health || exit 1
+# Back4app usa puerto 3000 por defecto
+EXPOSE 3000
 
 # Comando de inicio
 CMD ["npm", "start"]
