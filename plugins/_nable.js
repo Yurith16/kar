@@ -1,5 +1,5 @@
-import fetch from "node-fetch"
-import { saveDatabase } from "../lib/db.js"
+const fetch = require("node-fetch")
+const { saveDatabase } = require("../lib/db.js")
 
 let handler = async (m, { conn, usedPrefix, command, args }) => {
   await m.react('⚙️')
@@ -100,4 +100,4 @@ handler.help = ['en', 'dis']
 handler.tags = ['owner']
 handler.command = /^((en|dis)able|(tru|fals)e|(turn)?o(n|ff)|[01])$/i
 
-export default handler
+module.exports = handler

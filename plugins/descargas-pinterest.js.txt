@@ -1,6 +1,6 @@
-import axios from 'axios'
-import cheerio from 'cheerio'
-import { checkReg } from '../lib/checkReg.js'
+const axios = require('axios')
+const cheerio = require('cheerio')
+const { checkReg } = require('../lib/checkReg.js')
 
 // Sistema de búsquedas activas por usuario
 const busquedasActivas = new Map();
@@ -225,4 +225,4 @@ handler.command = ['pinterest', 'pin', 'pint']
 handler.tags = ['downloader']
 handler.group = true
 
-export default handler
+module.exports = handler

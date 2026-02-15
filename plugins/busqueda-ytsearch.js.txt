@@ -1,5 +1,5 @@
-import yts from "yt-search";
-import { checkReg } from '../lib/checkReg.js';
+const yts = require("yt-search");
+const { checkReg } = require('../lib/checkReg.js');
 
 let handler = async (m, { conn, text, usedPrefix, command }) => {
     const userId = m.sender;
@@ -59,4 +59,4 @@ handler.tags = ['downloader']
 handler.command = /^(yts|ytsearch)$/i;
 handler.group = true;
 
-export default handler;
+module.exports = handler;

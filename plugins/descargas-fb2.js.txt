@@ -1,10 +1,10 @@
 // plugins/facebook2.js
-import { gotScraping } from 'got-scraping';
-import * as cheerio from 'cheerio';
-import { checkReg } from '../lib/checkReg.js';
-import fs from 'fs';
-import path from 'path';
-import axios from 'axios';
+const { gotScraping } = require('got-scraping');
+const cheerio = require('cheerio');
+const { checkReg } = require('../lib/checkReg.js');
+const fs = require('fs');
+const path = require('path');
+const axios = require('axios');
 
 const TARGET_URL = 'https://fdownloader.net/es';
 
@@ -197,4 +197,4 @@ handler.tags = ['downloader'];
 handler.command = ['fb2'];
 handler.group = true;
 
-export default handler;
+module.exports = handler;

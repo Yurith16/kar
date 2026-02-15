@@ -1,7 +1,7 @@
-import { existsSync, readFileSync } from 'fs'
-import { join } from 'path'
-import { prepareWAMessageMedia, generateWAMessageFromContent, proto } from '@whiskeysockets/baileys'
-import { performance } from 'perf_hooks'
+const { existsSync, readFileSync } = require('fs')
+const { join } = require('path')
+const { prepareWAMessageMedia, generateWAMessageFromContent, proto } = require('@whiskeysockets/baileys')
+const { performance } = require('perf_hooks')
 
 const KARBOT_CONFIG = {
   BOT_NAME: "KARBOT",
@@ -143,4 +143,4 @@ let handler = async (m, { conn, usedPrefix: _p }) => {
 }
 
 handler.command = /^(menu|help|ayuda)$/i
-export default handler
+module.exports = handler

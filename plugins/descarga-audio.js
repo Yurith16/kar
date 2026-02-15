@@ -1,9 +1,9 @@
 // plugins/descarga-audio.js
-import ytdl from './scraper-ytdl.js';
-import { checkReg } from '../lib/checkReg.js';
-import fs from 'fs';
-import path from 'path';
-import axios from 'axios';
+const ytdl = require('./scraper-ytdl.js');
+const { checkReg } = require('../lib/checkReg.js');
+const fs = require('fs');
+const path = require('path');
+const axios = require('axios');
 
 // Control de descargas activas por usuario
 const activeDownloads = new Map();
@@ -124,4 +124,4 @@ handler.tags = ['downloader'];
 handler.command = ['audio'];
 handler.group = true;
 
-export default handler;
+module.exports = handler;

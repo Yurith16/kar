@@ -1,5 +1,5 @@
-import getFacebookDownloadInfo from '../lib/fdownloader.js'
-import { checkReg } from '../lib/checkReg.js'
+const getFacebookDownloadInfo = require('../lib/fdownloader.js')
+const { checkReg } = require('../lib/checkReg.js')
 
 const chooseDownloadable = (formats) =>
   formats.find((item) => item?.url && !item.requiresRender)
@@ -68,4 +68,4 @@ handler.tags = ['downloader']
 handler.command = ['fb', 'fbaudio']
 handler.group = true
 
-export default handler
+module.exports = handler

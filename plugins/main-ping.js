@@ -1,4 +1,4 @@
-import { checkReg } from '../lib/checkReg.js'
+const { checkReg } = require('../lib/checkReg.js')
 
 let handler = async (m, { conn }) => {
   const userId = m.sender
@@ -44,4 +44,4 @@ let handler = async (m, { conn }) => {
 
 handler.command = ['ping', 'p', 'latencia']
 handler.tags = ['main']
-export default handler
+module.exports = handler

@@ -1,4 +1,4 @@
-import { checkReg } from '../lib/checkReg.js'
+const { checkReg } = require('../lib/checkReg.js')
 
 const HOJITAS = ['🌿', '🍃', '🍀', '🌱', '☘️']
 const REACCIONES = ['🏛️', '💰', '🏦', '💹', '💳', '✨', '⚡', '🔥']
@@ -36,4 +36,4 @@ handler.tags = ['economy']
 handler.command = ['bal', 'balance']
 handler.register = true
 
-export default handler
+module.exports = handler

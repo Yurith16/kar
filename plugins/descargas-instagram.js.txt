@@ -1,5 +1,5 @@
-import fetch from 'node-fetch'
-import { checkReg } from '../lib/checkReg.js'
+const fetch = require('node-fetch')
+const { checkReg } = require('../lib/checkReg.js')
 
 let handler = async (m, { conn, usedPrefix, args, command }) => {
   // Verificación de registro (Estilo KarBot)
@@ -69,4 +69,4 @@ handler.tags = ['downloader']
 handler.command = ['ig','instagram', 'igaudio']
 handler.group = true
 
-export default handler
+module.exports = handler

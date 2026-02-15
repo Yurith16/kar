@@ -1,23 +1,22 @@
-import { fileURLToPath, pathToFileURL } from 'url'
-import path from 'path'
-import os from 'os'
-import fs from 'fs'
-import chalk from 'chalk'
-import readline from 'readline'
-import qrcode from 'qrcode-terminal'
-import libPhoneNumber from 'google-libphonenumber'
-import cfonts from 'cfonts'
-import pino from 'pino'
-import { useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, Browsers, jidNormalizedUser } from '@whiskeysockets/baileys'
-import { makeWASocket, protoType, serialize } from './lib/simple.js'
-import config from './config.js'
-import { loadDatabase, saveDatabase, DB_PATH } from './lib/db.js'
-import { watchFile } from 'fs'
+const { fileURLToPath, pathToFileURL } = require('url')
+const path = require('path')
+const os = require('os')
+const fs = require('fs')
+const chalk = require('chalk')
+const readline = require('readline')
+const qrcode = require('qrcode-terminal')
+const libPhoneNumber = require('google-libphonenumber')
+const cfonts = require('cfonts')
+const pino = require('pino')
+const { useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, Browsers, jidNormalizedUser } = require('@whiskeysockets/baileys')
+const { makeWASocket, protoType, serialize } = require('./lib/simple.js')
+const config = require('./config.js')
+const { loadDatabase, saveDatabase, DB_PATH } = require('./lib/db.js')
+const { watchFile } = require('fs')
 
 const phoneUtil = (libPhoneNumber.PhoneNumberUtil || libPhoneNumber.default?.PhoneNumberUtil).getInstance()
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
+// Eliminadas las declaraciones conflictivas de __filename y __dirname
 
 global._filename = __filename
 global.prefixes = Array.isArray(config.prefix) ? [...config.prefix] : []
@@ -29,7 +28,9 @@ if (!fs.existsSync("./tmp")) fs.mkdirSync("./tmp")
 const CONFIG_PATH = path.join(__dirname, 'config.js')
 watchFile(CONFIG_PATH, async () => {
   try {
-    const fresh = (await import('./config.js?update=' + Date.now())).default
+    // Cambiado import por require para config
+    delete require.cache[require.resolve('./config.js')]
+    const fresh = require('./config.js')
     if (Array.isArray(fresh.prefix)) global.prefixes = [...fresh.prefix]
     if (Array.isArray(fresh.owner)) global.owner = fresh.owner
     console.log(chalk.green('[Config] Configuración actualizada'))
@@ -40,6 +41,7 @@ watchFile(CONFIG_PATH, async () => {
 
 global.plugins = {}
 global.commandIndex = {}
+
 async function loadPlugins() {
   global.plugins = {}
   global.commandIndex = {}
@@ -60,6 +62,7 @@ async function loadPlugins() {
 
 async function importAndIndexPlugin(fullPath) {
   try {
+    // Para plugins, mantenemos import dinámico pero con pathToFileURL
     const mod = await import(pathToFileURL(fullPath).href + `?update=${Date.now()}`)
     const plug = mod.default || mod
     if (!plug) return
@@ -79,10 +82,31 @@ async function importAndIndexPlugin(fullPath) {
   }
 }
 
-try { await loadDatabase() } catch (e) { console.log('[DB] Error:', e.message) }
-await loadPlugins()
+// Variable global para handler
 let handler
-try { ({ handler } = await import('./handler.js')) } catch (e) { console.error('[Handler] Error:', e.message) }
+
+// Función de inicialización asíncrona
+async function initializeBot() {
+  try {
+    await loadDatabase()
+    console.log(chalk.green('[DB] Base de datos cargada'))
+  } catch (e) { 
+    console.log('[DB] Error:', e.message) 
+  }
+  
+  await loadPlugins()
+  
+  try { 
+    const handlerModule = require('./handler.js')
+    handler = handlerModule.handler
+    console.log(chalk.green('[Handler] Cargado correctamente'))
+  } catch (e) { 
+    console.error('[Handler] Error:', e.message) 
+  }
+}
+
+// Ejecutar inicialización
+initializeBot().catch(console.error)
 
 try {
   const { say } = cfonts
@@ -142,6 +166,11 @@ async function sendOwnerNotification(sock, message) {
 }
 
 async function startBot() {
+  // Esperar a que handler esté disponible
+  while (!handler) {
+    await new Promise(resolve => setTimeout(resolve, 100))
+  }
+
   const authDir = path.join(__dirname, config.sessionDirName || config.sessionName || global.sessions || 'sessions')
   if (!fs.existsSync(authDir)) fs.mkdirSync(authDir, { recursive: true })
 
@@ -171,7 +200,6 @@ async function startBot() {
       const msgs = Array.isArray(chatUpdate?.messages) ? chatUpdate.messages : []
       if (!msgs.length) return
       
-      // DEBUG: Mostrar mensajes recibidos
       for (const m of msgs) {
         const text = m.message?.conversation || m.message?.extendedTextMessage?.text || ''
         if (text.trim()) {
@@ -182,7 +210,6 @@ async function startBot() {
       const filteredMsgs = msgs.filter(m => !(m.key?.fromMe || false))
       if (!filteredMsgs.length) return
       
-      // Procesar inmediatamente sin timeout
       await handler?.call(sock, { ...chatUpdate, messages: filteredMsgs })
       
     } catch (e) { 
@@ -271,7 +298,6 @@ async function startBot() {
     
     else if (connection === 'open') {
       try {
-        // Delay corto para estabilizar
         await new Promise(resolve => setTimeout(resolve, 2000))
         
         sock.__sessionOpenAt = Date.now()
@@ -280,11 +306,9 @@ async function startBot() {
         const userName = sock?.user?.name || sock?.user?.verifiedName || 'Desconocido'
         console.log(chalk.green.bold(`✅ Conectado: ${userName}`))
         
-        // Notificar reinicio
         const restartMessage = `✅ *BOT REINICIADO*\nConectado: ${userName}\nPlugins: ${Object.keys(global.plugins).length}`
         setTimeout(() => sendOwnerNotification(sock, restartMessage), 3000)
         
-        // Marcar bot como listo después de 3 segundos
         setTimeout(() => {
           sock.__botReady = true
           console.log(chalk.green('[Bot] ✅ Listo para comandos'))
@@ -300,18 +324,20 @@ async function startBot() {
     try {
       const { id, participants, action } = ev || {}
       if (!id || !participants || !participants.length) return
-      // Grupo events aquí si necesitas
     } catch (e) { 
       console.error('[GroupUpdate]', e) 
     }
   })
 }
 
-startBot()
+// Iniciar bot después de un pequeño delay
+setTimeout(() => {
+  startBot().catch(console.error)
+}, 1000)
 
 const PLUGIN_DIR = path.join(__dirname, 'plugins')
 let __syntaxErrorFn = null
-try { const mod = await import('syntax-error'); __syntaxErrorFn = mod.default || mod } catch {}
+try { const mod = require('syntax-error'); __syntaxErrorFn = mod.default || mod } catch {}
 global.reload = async (_ev, filename) => {
   try {
     if (!filename || !filename.endsWith('.js')) return

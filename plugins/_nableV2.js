@@ -23,4 +23,4 @@ handler.tags = ['group']
 handler.command = /^(config|settings|configuracion)$/i
 handler.group = true
 
-export default handler
+module.exports = handler

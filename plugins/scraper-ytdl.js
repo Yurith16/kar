@@ -1,5 +1,5 @@
 // plugins/scraper-ytdl.js
-import yts from 'yt-search';
+const yts = require('yt-search');
 
 const ytdl = async (videoUrl, formato) => {
   if (!formato) throw new Error('Formato requerido (mp4 o mp3)');
@@ -43,4 +43,4 @@ const ytdl = async (videoUrl, formato) => {
   }
 };
 
-export default ytdl;
+module.exports = ytdl;

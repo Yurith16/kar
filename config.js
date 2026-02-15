@@ -1,14 +1,21 @@
-import { watchFile, unwatchFile } from "fs";
-import chalk from "chalk";
-import { fileURLToPath, pathToFileURL } from "url";
-import fs from "fs";
-import * as cheerio from "cheerio";
-import fetch from "node-fetch";
-import axios from "axios";
-import moment from "moment-timezone";
-import { dirname } from "path";
+const { watchFile, unwatchFile } = require("fs");
+const chalk = require("chalk");
+const { fileURLToPath, pathToFileURL } = require("url");
+const fs = require("fs");
+const cheerio = require("cheerio");
+const fetch = require("node-fetch");
+const axios = require("axios");
+const moment = require("moment-timezone");
+const { dirname } = require("path");
 
-global.__dirname = (url) => dirname(fileURLToPath(url));
+// En CommonJS, __dirname ya existe, pero si necesitas esta función:
+global.__dirname = (url) => {
+  try {
+    return dirname(fileURLToPath(url));
+  } catch {
+    return __dirname;
+  }
+};
 
 //aquí los retirados👑🥀
 global.retirado = [["50496926150", "𝙷𝙴𝚁𝙽𝙰𝙽𝙳𝙴𝚉", true]];
@@ -37,8 +44,8 @@ global.jadi = "Sessions/SubBot";
 global.ItsukiJadibts = false;
 global.Choso = false;
 global.prefix = "/";
-global.apikey = "𝙺𝙰𝚁𝙱𝙾𝚃𝙸𝙰"; // ¡CORREGIDO!
-global.botNumber = '50498729368'// Números y settings globales para varios códigos
+global.apikey = "𝙺𝙰𝚁𝙱𝙾𝚃𝙸𝙰";
+global.botNumber = '50498729368'
 global.packname = "⚙️  𝙺𝙰𝚁𝙱𝙾𝚃 ⚙️";
 global.botname = "⚙️  𝙺𝙰𝚁𝙱𝙾𝚃 ⚙️";
 global.wm = "© 𝙷𝙴𝚁𝙽𝙰𝙽𝙳𝙴𝚉";
@@ -73,7 +80,7 @@ global.APIs = {
   xteam: "https://api.xteam.xyz",
   lol: "https://api.lolhuman.xyz",
   delirius: "https://delirius-apiofc.vercel.app",
-  siputzx: "https://api.siputzx.my.id", // usado como fallback para sugerencias IA
+  siputzx: "https://api.siputzx.my.id",
   mayapi: "https://mayapi.ooguy.com",
 };
 
@@ -117,17 +124,22 @@ global.chatDefaults = {
   antitoxic: false,
 };
 
-let file = fileURLToPath(import.meta.url);
+// CORREGIDO: Usar __filename en lugar de import.meta.url
+let file = __filename;
 watchFile(file, () => {
   unwatchFile(file);
   console.log(chalk.redBright("𝚄𝚙𝚍𝚊𝚝𝚎 '𝚌𝚘𝚗𝚏𝚒𝚐.𝚓𝚜'"));
   try {
-    import(pathToFileURL(file).href + `?update=${Date.now()}`);
-  } catch {}
+    // Recargar el módulo eliminando el cache
+    delete require.cache[require.resolve('./config.js')];
+    require('./config.js');
+  } catch (e) {
+    console.error('Error recargando config:', e);
+  }
 });
 
 // Configuraciones finales
-export default {
+module.exports = {
   prefix: global.prefix,
   owner: global.owner,
   sessionDirName: global.sessions,
