@@ -128,9 +128,9 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
     }
 };
 
-handler.help = ['ytmp4 <url>'];
+handler.help = ['mp4 <url>'];
 handler.tags = ['downloader'];
-handler.command = /^(ytmp4)$/i;
+handler.command = /^(mp4)$/i;
 handler.register = true;
 
 module.exports = handler;

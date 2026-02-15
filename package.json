@@ -1,5 +1,5 @@
 {
-  "name": "karbot",
+  "name": "kar",
   "version": "7.5.2",
   "type": "commonjs",
   "main": "index.js",
@@ -56,7 +56,6 @@
     "url-regex-safe": "^4.0.0",
     "uuid": "^10.0.0",
     "yargs": "^17.3.1",
-    "yt-dlp-exec": "^1.0.2",
     "yt-search": "^2.13.1",
     "ytdl-core": "^4.11.5"
   },

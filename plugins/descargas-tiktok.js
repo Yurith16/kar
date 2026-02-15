@@ -5,8 +5,7 @@ const { checkReg } = require('../lib/checkReg.js')
 // Mapa para gestionar las descargas activas y evitar el abuso
 let descargasActivas = new Set()
 
-// ========== MÉTODOS DE RESPALDO (FALLBACK) ==========
-
+// ========== MÉTODOS DE RESPALDO ==========
 async function tryTikWM(url) {
     const res = await axios.get(`https://www.tikwm.com/api/?url=${encodeURIComponent(url)}?hd=1`)
     const data = res.data?.data
@@ -14,7 +13,7 @@ async function tryTikWM(url) {
         return {
             video: data.play,
             audio: data.music,
-            images: data.images, // TikWM a veces devuelve imágenes aquí
+            images: data.images,
             success: true
         }
     }
@@ -39,26 +38,28 @@ let handler = async (m, { conn, text, args, command }) => {
     const userId = m.sender
     const user = global.db.data.users[userId]
 
-    // 1. Verificación de registro
+    // Verificación de registro
     if (await checkReg(m, user)) return
 
-    // 2. Control de abuso (Una descarga a la vez)
+    // Control de descargas (una a la vez)
     if (descargasActivas.has(m.sender)) {
-        return m.reply(`> ⚠️ *𝗗𝗘𝗧𝗘𝗡𝗧𝗘:* No abuses, cielo. Ya tienes una descarga en proceso. Espera a que termine.`)
+        await m.react('⏳')
+        return m.reply(`> ⏳ *Ya tienes una descarga en proceso, espera.*`)
     }
 
-    if (!text) return m.reply(`> ¿Qué TikTok desea buscar hoy, cielo?`)
+    if (!text) {
+        await m.react('🤔')
+        return m.reply(`> ¿Qué TikTok desea descargar?\n> Envíe un enlace o nombre.`)
+    }
 
     const isUrl = /(?:https:?\/{2})?(?:www\.|vm\.|vt\.|t\.)?tiktok\.com\/([^\s&]+)/gi.test(text)
 
     try {
         descargasActivas.add(m.sender)
 
-        // Secuencia de reacciones 🔍🌿🍀📥
-        const reacciones = ['🔍', '🌿', '🍀', '📥']
-        for (const reacc of reacciones) {
-            await m.react(reacc)
-        }
+        // Secuencia técnica de reacciones
+        await m.react('🔍') // Buscando
+        await m.react('📥') // Descargando
 
         if (isUrl) {
             let result = await tryTikWM(text)
@@ -68,26 +69,26 @@ let handler = async (m, { conn, text, args, command }) => {
 
             const isAudioCommand = ['tiktokaudio', 'tta', 'ttaudio'].includes(command)
 
-            // CASO 1: AUDIO
+            // CASO: AUDIO
             if (isAudioCommand) {
                 if (!result.audio) throw new Error('No audio found')
+                await m.react('📦') // Procesando
                 await conn.sendMessage(m.chat, {
                     audio: { url: result.audio },
                     mimetype: 'audio/mpeg',
                     fileName: `tiktok_audio.mp3`,
-                    ptt: false,
-                    caption: '> Descarga completada'
+                    ptt: false
                 }, { quoted: m })
             } 
-            // CASO 2: GALERÍA DE IMÁGENES
+            // CASO: GALERÍA DE IMÁGENES
             else if (result.images && result.images.length > 0) {
+                await m.react('📦') // Procesando
                 for (let img of result.images) {
                     await conn.sendMessage(m.chat, { 
-                        image: { url: img }, 
-                        caption: `> Imagen descargada con éxito.` 
+                        image: { url: img }
                     }, { quoted: m })
                 }
-                // También enviar la música de la galería
+                // Enviar audio si existe
                 if (result.audio) {
                     await conn.sendMessage(m.chat, {
                         audio: { url: result.audio },
@@ -97,20 +98,21 @@ let handler = async (m, { conn, text, args, command }) => {
                     }, { quoted: m })
                 }
             } 
-            // CASO 3: VIDEO
+            // CASO: VIDEO
             else if (result.video) {
+                await m.react('📦') // Procesando
                 await conn.sendMessage(m.chat, { 
-                    video: { url: result.video }, 
-                    caption: '> Descarga completada' 
+                    video: { url: result.video }
                 }, { quoted: m })
             }
 
         } else {
-            // BÚSQUEDA POR TEXTO (Solo video)
+            // BÚSQUEDA POR TEXTO
             if (['tiktokaudio', 'tta', 'ttaudio'].includes(command)) {
-                return m.reply(`> Para descargar audio necesitas un enlace de TikTok, cielo.`)
+                return m.reply(`> Para audio necesitas un enlace directo.`)
             }
 
+            await m.react('📦') // Procesando
             const res = await axios({
                 method: 'POST',
                 url: 'https://tikwm.com/api/feed/search',
@@ -121,23 +123,22 @@ let handler = async (m, { conn, text, args, command }) => {
             if (!video) throw new Error('No results')
 
             await conn.sendMessage(m.chat, { 
-                video: { url: video.play }, 
-                caption: '> Descarga completada' 
+                video: { url: video.play }
             }, { quoted: m })
         }
 
-        await m.react('⚙️')
+        await m.react('✅') // Éxito
 
     } catch (e) {
-        console.error(e)
+        console.error('[TikTok Error]:', e.message)
         await m.react('❌')
-        await m.reply(`> Lo siento, hubo un error en el jardín de TikTok.`)
+        await m.reply(`> 🌪️ *Vaya drama...* No pude descargar el contenido.`)
     } finally {
         descargasActivas.delete(m.sender)
     }
 }
 
-handler.help = ['tiktok + url', 'tiktokaudio + url']
+handler.help = ['tiktok <url>', 'tiktokaudio <url>']
 handler.tags = ['downloader']
 handler.command = ['tiktok', 'tt', 'tiktokaudio', 'tta', 'ttaudio']
 handler.group = true

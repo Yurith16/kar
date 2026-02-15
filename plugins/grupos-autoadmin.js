@@ -1,9 +1,9 @@
-import { checkReg } from '../lib/checkReg.js'
+const { checkReg } = require('../lib/checkReg.js')
 
 let autoadminGlobal = global.autoadminGlobal ?? true
 global.autoadminGlobal = autoadminGlobal
 
-const handler = async (m, { conn, isAdmin, isBotAdmin, isROwner, usedPrefix, command, args }) => {
+let handler = async (m, { conn, isAdmin, isBotAdmin, isROwner, usedPrefix, command, args }) => {
   const userId = m.sender
   const user = global.db.data.users[userId]
   
@@ -16,12 +16,12 @@ const handler = async (m, { conn, isAdmin, isBotAdmin, isROwner, usedPrefix, com
     return m.reply(`> 🔒 *Lo siento, cielo, pero este comando es de uso exclusivo para mi creador.*`)
   }
 
-  // Si el comando está desactivado globalmente (aunque seas owner, por si quieres probar el switch)
+  // Si el comando está desactivado globalmente
   if (!global.autoadminGlobal) {
     return conn.reply(m.chat, '> 🌪️ *Vaya drama... El sistema de autoadmin está desactivado globalmente.*', m)
   }
 
-  // Si el bot no es admin (Sin esto no podemos dar poder)
+  // Si el bot no es admin
   if (!isBotAdmin) {
     return conn.reply(m.chat, '> ⚙️ *No puedo darte admin si yo misma no lo soy, corazón.*', m)
   }
@@ -54,6 +54,6 @@ handler.help = ['autoadmin']
 handler.tags = ['owner']
 handler.command = ['autoadmin']
 handler.group = true
-handler.owner = true // Esto refuerza que solo tú puedas verlo en el menú
+handler.owner = true
 
-export default handler
+module.exports = handler
