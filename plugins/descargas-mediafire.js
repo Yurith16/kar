@@ -55,17 +55,23 @@ let handler = async (m, { conn, args }) => {
 
     if (await checkReg(m, user)) return;
 
-    if (activeDownloads.has(userId)) return conn.reply(m.chat, `> Un momento, ya estoy procesando una descarga para usted.`, m);
-    if (!text) return conn.reply(m.chat, `> Debe proporcionar un enlace de Mediafire.`, m);
+    if (activeDownloads.has(userId)) {
+        await m.react('⏳');
+        return conn.reply(m.chat, `> ⏳ Ya estoy procesando una descarga para ti.`, m);
+    }
+    
+    if (!text) {
+        await m.react('❓');
+        return conn.reply(m.chat, `> *MEDIAFIRE*\n> Uso: .mf <url>`, m);
+    }
 
     activeDownloads.set(userId, true);
     
     try {
-        // Secuencia botánica de KarBot para dar vida al proceso 🌿
-        const reacciones = ['🔍', '🌿', '🍀', '📥'];
-        for (const reacc of reacciones) {
-            await m.react(reacc);
-        }
+        // Secuencia técnica de descargas
+        await m.react('🔍'); // Buscando
+        await m.react('📥'); // Descargando
+        await m.react('📦'); // Procesando
 
         const fileInfo = await mediafireDl(text);
         const { name: fileName, size, mime, link } = fileInfo;
@@ -74,36 +80,44 @@ let handler = async (m, { conn, args }) => {
         // Restricción de peso (500 MB)
         if (sizeMB > 500) {
             await m.react("❌");
-            return conn.reply(m.chat, `> El archivo supera el límite de 500 MB permitido.`, m);
+            activeDownloads.delete(userId);
+            return conn.reply(m.chat, 
+                `> ⚠️ Archivo demasiado grande: ${sizeMB.toFixed(2)}MB (Límite: 500MB)\n` +
+                `> Estamos trabajando para permitir descargas mayores.`, m);
         }
 
         // Descarga del buffer
-        const response = await axios({ method: "GET", url: link, responseType: "arraybuffer", timeout: 250000 });
+        const response = await axios({ 
+            method: "GET", 
+            url: link, 
+            responseType: "arraybuffer", 
+            timeout: 300000
+        });
+        
         const fileBuffer = Buffer.from(response.data);
 
-        // Caption final solicitado por ti
-        const fileDetails = `> Su descarga fue exitosa`;
+        await m.react('📤'); // Enviando
 
+        // Enviar archivo con caption mínimo
         await conn.sendMessage(m.chat, { 
             document: fileBuffer, 
             mimetype: mime, 
             fileName: fileName, 
-            caption: fileDetails 
+            caption: `✅ *Descarga exitosa*`
         }, { quoted: m });
         
-        // El engranaje final de KarBot ⚙️
-        await m.react("⚙️");
+        await m.react('✅');
 
     } catch (error) {
-        console.error(error);
-        await m.react("❌");
-        return conn.reply(m.chat, `> Lo siento, no pude descargar el archivo`, m);
+        console.error('[Mediafire Error]:', error.message);
+        await m.react('❌');
+        return conn.reply(m.chat, `> ❌ Error al descargar el archivo.`, m);
     } finally {
         activeDownloads.delete(userId);
     }
 };
 
-handler.help = ['mediafire + url']
+handler.help = ['mediafire <url>']
 handler.tags = ['downloader']
 handler.command = ["mediafire", "mf"];
 handler.group = true;

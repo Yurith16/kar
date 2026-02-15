@@ -17,9 +17,7 @@ resolve()
 }, ms))
 
 const globalPrefixes = [
-  '.', ',', '!', '#', '$', '%', '&', '*',
-  '-', '_', '+', '=', '|', '\\', '/', '~',
-  '>', '<', '^', '?', ':', ';'
+  '.'
 ]
 
 const detectPrefix = (text, customPrefix = null) => {
@@ -61,40 +59,6 @@ const detectPrefix = (text, customPrefix = null) => {
 
 const paisesCodigos = {
     'arabia': ['+966', '966'],
-    'emiratos': ['+971', '971'],
-    'qatar': ['+974', '974'],
-    'kuwait': ['+965', '965'],
-    'bahrein': ['+973', '973'],
-    'oman': ['+968', '968'],
-    'egipto': ['+20', '20'],
-    'jordania': ['+962', '962'],
-    'siria': ['+963', '963'],
-    'irak': ['+964', '964'],
-    'yemen': ['+967', '967'],
-    'palestina': ['+970', '970'],
-    'libano': ['+961', '961'],
-    'india': ['+91', '91'],
-    'pakistan': ['+92', '92'],
-    'bangladesh': ['+880', '880'],
-    'afganistan': ['+93', '93'],
-    'nepal': ['+977', '977'],
-    'sri-lanka': ['+94', '94'],
-    'nigeria': ['+234', '234'],
-    'ghana': ['+233', '233'],
-    'kenia': ['+254', '254'],
-    'etiopia': ['+251', '251'],
-    'sudafrica': ['+27', '27'],
-    'senegal': ['+221', '221'],
-    'china': ['+86', '86'],
-    'indonesia': ['+62', '62'],
-    'filipinas': ['+63', '63'],
-    'vietnam': ['+84', '84'],
-    'tailandia': ['+66', '66'],
-    'rusia': ['+7', '7'],
-    'ucrania': ['+380', '380'],
-    'rumania': ['+40', '40'],
-    'polonia': ['+48', '48'],
-    'brasil': ['+55', '55'],
 }
 
 function detectCountryByNumber(number) {
@@ -112,41 +76,6 @@ function detectCountryByNumber(number) {
 function getCountryName(code) {
     const countryNames = {
         'arabia': 'Arabia Saudita 🇸🇦',
-        'emiratos': 'Emiratos Árabes 🇦🇪',
-        'qatar': 'Qatar 🇶🇦',
-        'kuwait': 'Kuwait 🇰🇼',
-        'bahrein': 'Bahréin 🇧🇭',
-        'oman': 'Omán 🇴🇲',
-        'egipto': 'Egipto 🇪🇬',
-        'jordania': 'Jordania 🇯🇴',
-        'siria': 'Siria 🇸🇾',
-        'irak': 'Irak 🇮🇶',
-        'yemen': 'Yemen 🇾🇪',
-        'palestina': 'Palestina 🇵🇸',
-        'libano': 'Líbano 🇱🇧',
-        'india': 'India 🇮🇳',
-        'pakistan': 'Pakistán 🇵🇰',
-        'bangladesh': 'Bangladesh 🇧🇩',
-        'afganistan': 'Afganistán 🇦🇫',
-        'nepal': 'Nepal 🇳🇵',
-        'sri-lanka': 'Sri Lanka 🇱🇰',
-        'nigeria': 'Nigeria 🇳🇬',
-        'ghana': 'Ghana 🇬🇭',
-        'kenia': 'Kenia 🇰🇪',
-        'etiopia': 'Etiopía 🇪🇹',
-        'sudafrica': 'Sudáfrica 🇿🇦',
-        'senegal': 'Senegal 🇸🇳',
-        'china': 'China 🇨🇳',
-        'indonesia': 'Indonesia 🇮🇩',
-        'filipinas': 'Filipinas 🇵🇭',
-        'vietnam': 'Vietnam 🇻🇳',
-        'tailandia': 'Tailandia 🇹🇭',
-        'rusia': 'Rusia 🇷🇺',
-        'ucrania': 'Ucrania 🇺🇦',
-        'rumania': 'Rumania 🇷🇴',
-        'polonia': 'Polonia 🇵🇱',
-        'brasil': 'Brasil 🇧🇷',
-        'local': 'Local 🌍'
     }
     return countryNames[code] || code
 }
@@ -340,27 +269,6 @@ async function handler(chatUpdate) {
 
             if (chat.antiArabe) {
                 const paisesArabes = [
-                    '+966', '966', 
-                    '+971', '971', 
-                    '+974', '974', 
-                    '+965', '965', 
-                    '+973', '973', 
-                    '+968', '968', 
-                    '+20', '20',   
-                    '+962', '962', 
-                    '+963', '963', 
-                    '+964', '964', 
-                    '+967', '967', 
-                    '+970', '970', 
-                    '+961', '961', 
-                    '+218', '218', 
-                    '+212', '212', 
-                    '+216', '216', 
-                    '+213', '213', 
-                    '+222', '222', 
-                    '+253', '253', 
-                    '+252', '252', 
-                    '+249', '249'  
                 ]
 
                 const esArabe = paisesArabes.some(code => userNumber.startsWith(code.replace('+', '')))
@@ -669,18 +577,19 @@ global.dfail = (type, m, conn) => {
   let verifyaleatorio = ['registrar', 'reg', 'verificar', 'verify', 'register'].getRandom()
 
   const msg = {
-    retirado: 'Este comando solo lo pueden usar los owners retirados del bot',
-    rowner: '*\˙˚ʚ₍ ᐢ.👑.ᐢ ₎ɞ˚ ᥱs𝗍ᥱ ᥴ᥆mᥲᥒძ᥆ s᥆ᥣ᥆ ⍴ᥙᥱძᥱ ᥙ𝗍іᥣіzᥲr ⍴᥆r ᥱᥣ ⍴r᥆⍴іᥱ𝗍ᥲrі᥆ ძᥱᥣ ᑲ᥆𝗍.\*',
-    owner: '*\˙˚ʚ₍ ᐢ.👤.ᐢ ₎ɞ˚ ᥱs𝗍ᥱ ᥴ᥆mᥲᥒძ᥆ s᥆ᥣ᥆ sᥱ ⍴ᥙᥱძᥱ ᥙsᥲr ⍴᥆r ᥱᥣ ⍴r᥆⍴іᥱ𝗍ᥲrі᥆ ძᥱᥣ ᑲ᥆𝗍.\*',
-    mods: '*\˙˚ʚ₍ ᐢ.🍃.ᐢ ₎ɞ˚ ᥱs𝗍ᥱ ᥴ᥆mᥲᥒძ᥆ s᥆ᥣ᥆ sᥱ ⍴ᥙᥱძᥱ ᥙsᥲr ⍴᥆r ᥱᥣ ⍴r᥆⍴іᥱ𝗍ᥲrі᥆ ძᥱᥣ ᑲ᥆𝗍.\*',
-    premium: '*\˙˚ʚ₍ ᐢ.💎.ᐢ ₎ɞ˚ ᥱs𝗍ᥱ ᥴ᥆mᥲᥒძ᥆ s᥆ᥣ᥆ sᥱ ⍴ᥙᥱძᥱ ᥙ𝗍іᥣіzᥲr ⍴᥆r ᥙsᥙᥲrі᥆s ⍴rᥱmіᥙm, ᥡ ⍴ᥲrᥲ mі ᥴrᥱᥲძ᥆r.\*',
-    group: '*\˙˚ʚ₍ ᐢ.📚.ᐢ ₎ɞ˚ ᥱs𝗍ᥱ ᥴ᥆mᥲᥒძ᥆ s᥆ᥣ᥆ sᥱ ⍴ᥙᥱძᥱ ᥙsᥲr ᥱᥒ grᥙ⍴᥆s.\`*',
-    private: '*\˙˚ʚ₍ ᐢ.📲.ᐢ ₎ɞ˚ ᥱs𝗍ᥱ ᥴ᥆mᥲᥒძ᥆ s᥆ᥣ᥆ sᥱ ⍴ᥙᥱძᥱ ᥙsᥲr ᥲᥣ ᥴһᥲ𝗍 ⍴rі᥎ᥲძ᥆ ძᥱᥣ ᑲ᥆𝗍.\*',
-    admin: '*\˙˚ʚ₍ ᐢ.🔱.ᐢ ₎ɞ˚ ᥱs𝗍ᥱ ᥴ᥆mᥲᥒძ᥆ s᥆ᥣ᥆ sᥱs ⍴ᥲrᥲ ᥲძmіᥒs ძᥱᥣ grᥙ⍴᥆.\`*',
-    botAdmin: '*\˙˚ʚ₍ ᐢ.🌟.ᐢ ₎ɞ˚ ⍴ᥲrᥲ ⍴᥆ძᥱr ᥙsᥲr ᥱs𝗍ᥱ ᥴ᥆mᥲᥒძ᥆ ᥱs ᥒᥱᥴᥱsᥲrіᥲr 𝗊ᥙᥱ ᥡ᥆ sᥱᥲ ᥲძmіᥒ.\*',
-    unreg: '*\˙˚ʚ₍ ᐢ.📋.ᐢ ₎ɞ˚ ᥒᥱᥴᥱsі𝗍ᥱs ᥱs𝗍ᥲr rᥱgіs𝗍rᥲძ᥆(ᥲ) ⍴ᥲrᥲ ᥙsᥲr ᥱs𝗍ᥱ ᥴ᥆mᥲᥒძ᥆, ᥱsᥴrіᑲᥲr #rᥱg ⍴ᥲrᥲ rᥱgіs𝗍rᥲr𝗍ᥱ.\*',
-    restrict: '*\˙˚ʚ₍ ᐢ.⚙️.ᐢ ₎ɞ˚ ᥴ᥆mᥲᥒძ᥆ rᥱs𝗍rіᥒgіძ᥆ ⍴ᥲr ძᥱᥴіsіᥲr ძᥱᥣ ⍴r᥆⍴іᥲ𝗍ᥲrі᥆ ძᥱᥣ ᑲ᥆𝗍.\*'
+    retirado: '> *Este comando solo lo pueden usar los owners retirados del bot.*',
+    rowner: '> *Este comando solo puede ser utilizado por el propietario real del bot.*',
+    owner: '> *Este comando solo es accesible para el propietario del bot.*',
+    mods: '> *Comando restringido únicamente para el equipo de moderación.*',
+    premium: '> *Este comando es exclusivo para usuarios premium y mi creador.*',
+    group: '> *Este comando solo puede ser utilizado dentro de grupos.*',
+    private: '> *Este comando solo funciona en el chat privado del bot.*',
+    admin: '> *Lo siento, pero este comando es solo para admins del grupo.*',
+    botAdmin: '> *Para poder usar este comando, es necesario que yo sea admin.*',
+    unreg: '> *Necesitas estar registrado(a) para usar esto. Escribe #reg para registrarte.*',
+    restrict: '> *Este comando ha sido restringido por decisión del propietario.*'
   }[type]
+
   if (msg) return conn.reply(m.chat, msg, m, global.rcanal).then(_ => m.react('✖️'))
 }
 

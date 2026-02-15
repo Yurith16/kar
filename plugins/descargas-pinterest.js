@@ -5,6 +5,9 @@ const { checkReg } = require('../lib/checkReg.js')
 // Sistema de búsquedas activas por usuario
 const busquedasActivas = new Map();
 
+// Tiempo de expiración: 30 segundos
+const EXPIRATION_TIME = 30000;
+
 // Quoted especial
 async function makeFkontak() {
     try {
@@ -102,21 +105,24 @@ let handler = async (m, { conn, text, args, usedPrefix }) => {
     
     if (await checkReg(m, user)) return
     
-    const fkontak = await makeFkontak()
-    
+    // Si ya existe una búsqueda activa, eliminarla (nuevo pedido cancela el anterior)
     if (busquedasActivas.has(userId)) {
-        return await conn.reply(m.chat, '> Ya tienes una búsqueda activa.', m)
+        const busquedaAnterior = busquedasActivas.get(userId);
+        if (busquedaAnterior && busquedaAnterior.timeout) {
+            clearTimeout(busquedaAnterior.timeout);
+        }
+        busquedasActivas.delete(userId);
     }
+    
+    const fkontak = await makeFkontak()
     
     if (!text) {
         return await conn.reply(m.chat, '> ¿Qué desea buscar en Pinterest?', m)
     }
     
-    busquedasActivas.set(userId, true)
-    
     try {
-        // Secuencia de reacciones idéntica al comando de Instagram
-        const reacciones = ['🔍', '🌿', '🍀', '📥']
+        // Secuencia de reacciones
+        const reacciones = ['🔍', '📥']
         for (const reacc of reacciones) {
             await m.react(reacc)
         }
@@ -129,37 +135,47 @@ let handler = async (m, { conn, text, args, usedPrefix }) => {
                 [isVideo ? "video" : "image"]: { url: i.download }
             }, { quoted: fkontak || m })
             
-            // El engranaje final de KarBot ⚙️
-            await m.react('⚙️')
+            await m.react('✅')
             
         } else {
             const results = await pins(text)
             
             if (!results.length) {
                 await m.react('❌')
-                busquedasActivas.delete(userId)
                 return await conn.reply(m.chat, '> Lo siento, hubo un error.', m)
             }
             
-            // Seleccionar primera imagen
-            const primeraImagen = results[0]
+            // Guardar los resultados para este usuario con timeout de expiración
+            const timeout = setTimeout(() => {
+                if (busquedasActivas.has(userId)) {
+                    busquedasActivas.delete(userId);
+                }
+            }, EXPIRATION_TIME);
             
-            // Guardar los resultados para este usuario
             busquedasActivas.set(userId, {
                 resultados: results,
-                indice: 1,
+                indice: 0, // Comenzamos desde 0
                 termino: text,
-                chat: m.chat
+                chat: m.chat,
+                timeout: timeout
             })
             
-            // Enviar primera imagen con mensaje simple
-            await conn.sendMessage(m.chat, { 
-                image: { url: primeraImagen.image_large_url }, 
-                caption: '> ¿Desea otra imagen? Escriba *si*'
-            }, { quoted: m })
+            // Enviar primeras DOS imágenes
+            for (let i = 0; i < Math.min(2, results.length); i++) {
+                const imagen = results[i];
+                await conn.sendMessage(m.chat, { 
+                    image: { url: imagen.image_large_url }, 
+                    caption: i === 0 ? '> ¿Desea más imágenes? Responda *si* o *no*' : undefined
+                }, { quoted: i === 0 ? m : undefined });
+                
+                // Pequeña pausa entre imágenes
+                if (i < 1) await new Promise(resolve => setTimeout(resolve, 1000));
+            }
             
-            // El engranaje final de KarBot ⚙️
-            await m.react('⚙️')
+            // Actualizar índice después de enviar las 2 primeras
+            busquedasActivas.get(userId).indice = 2;
+            
+            await m.react('✅')
         }
         
     } catch (e) {
@@ -177,47 +193,70 @@ handler.before = async (m, { conn }) => {
     if (!busqueda || m.isBaileys || !m.text) return 
     if (m.chat !== busqueda.chat) return
 
+    // Ignorar comandos
     if (m.text.startsWith('.') || m.text.startsWith('/') || m.text.startsWith('#') || m.text.startsWith('!')) return
 
     let text = m.text.trim().toLowerCase()
     
-    // Solo responder a "si" o "sí"
+    // Resetear timeout en cada interacción
+    if (busqueda.timeout) {
+        clearTimeout(busqueda.timeout);
+    }
+    
+    // Crear nuevo timeout (solo para limpiar la búsqueda, sin mensaje)
+    const newTimeout = setTimeout(() => {
+        if (busquedasActivas.has(m.sender)) {
+            busquedasActivas.delete(m.sender);
+        }
+    }, EXPIRATION_TIME);
+    
+    busqueda.timeout = newTimeout;
+    
+    // Respuesta NO
+    if (text === 'no' || text === 'no' || text === 'nop' || text === 'cancelar') {
+        busquedasActivas.delete(m.sender);
+        await m.react('👌');
+        return conn.reply(m.chat, '> ✅ Búsqueda cancelada.', m);
+    }
+    
+    // Respuesta SÍ
     if (text === 'si' || text === 'sí') {
         // Verificar si hay más imágenes disponibles
         if (busqueda.indice >= busqueda.resultados.length) {
-            busquedasActivas.delete(m.sender)
-            return conn.reply(m.chat, '> Ya no hay más imágenes.', m)
+            busquedasActivas.delete(m.sender);
+            return conn.reply(m.chat, '> Ya no hay más imágenes.', m);
         }
         
-        // Obtener la siguiente imagen
-        const siguienteImagen = busqueda.resultados[busqueda.indice]
+        // Enviar siguientes DOS imágenes
+        const imagenesRestantes = busqueda.resultados.length - busqueda.indice;
+        const cantidadAEnviar = Math.min(2, imagenesRestantes);
         
-        // Enviar imagen con pregunta
-        await conn.sendMessage(m.chat, { 
-            image: { url: siguienteImagen.image_large_url }, 
-            caption: '> ¿Desea otra imagen relacionada? Escriba *si*'
-        }, { quoted: m })
+        for (let i = 0; i < cantidadAEnviar; i++) {
+            const imagen = busqueda.resultados[busqueda.indice + i];
+            await conn.sendMessage(m.chat, { 
+                image: { url: imagen.image_large_url }
+            }, { quoted: m });
+            
+            if (i < cantidadAEnviar - 1) await new Promise(resolve => setTimeout(resolve, 1000));
+        }
         
         // Actualizar índice
-        busqueda.indice += 1
+        busqueda.indice += cantidadAEnviar;
         
-        // El engranaje final de KarBot ⚙️
-        await m.react('⚙️')
-        
-        // Si ya no hay más imágenes, limpiar la búsqueda
-        if (busqueda.indice >= busqueda.resultados.length) {
-            setTimeout(() => {
-                busquedasActivas.delete(m.sender)
-                conn.reply(m.chat, '> Ya no hay más imágenes.', m)
-            }, 3000)
+        // Verificar si aún quedan imágenes
+        if (busqueda.indice < busqueda.resultados.length) {
+            await conn.reply(m.chat, `> Quedan ${busqueda.resultados.length - busqueda.indice} imágenes más. ¿Desea verlas? Responda *si* o *no*`, m);
+        } else {
+            // No quedan más imágenes
+            busquedasActivas.delete(m.sender);
+            await conn.reply(m.chat, '> ✅ No hay más imágenes disponibles.', m);
         }
         
-        return true
+        await m.react('✅');
+        return true;
     }
     
-    // Si escribe cualquier otra cosa, limpiar la búsqueda
-    busquedasActivas.delete(m.sender)
-    return true
+    return true;
 }
 
 handler.help = ['pinterest + nombre']
