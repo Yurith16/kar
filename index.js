@@ -110,15 +110,34 @@ initializeBot().catch(console.error)
 
 try {
   const { say } = cfonts
-  const botDisplayName = config.botName || config.name || global.namebot || 'Bot'
-  console.log(chalk.magentaBright(`\n🌱Iniciando ${botDisplayName}...`))
-  say('ItsukiV3', { font: 'simple', align: 'left', gradient: ['green','white'] })
-  say('Powered by leo 👑', { font: 'console', align: 'center', colors: ['cyan','magenta','yellow'] })
+  const botDisplayName = 'KarBot'
+  
+  // Mensaje en consola con chalk
+  console.log(chalk.greenBright(`\n🌱 Iniciando ${botDisplayName}...`))
+
+  // Banner principal: KarBot
+  say('KarBot', { 
+    font: 'simple', 
+    align: 'left', 
+    gradient: ['green', 'white'] 
+  })
+
+  // Subtítulo: Ingeniería y Naturaleza
+  say('Engineered for Passion 🍀', { 
+    font: 'console', 
+    align: 'center', 
+    colors: ['green', 'white', 'gray'] 
+  })
+
   try { protoType() } catch {}
   try { serialize() } catch {}
+
   const ramInGB = os.totalmem() / (1024 * 1024 * 1024)
   const freeRamInGB = os.freemem() / (1024 * 1024 * 1024)
-  console.log(chalk.cyan(`💾 RAM: ${ramInGB.toFixed(2)}GB total, ${freeRamInGB.toFixed(2)}GB libre`))
+
+  // Información del sistema con colores KarBot
+  console.log(chalk.greenBright(`💾 RAM: ${ramInGB.toFixed(2)}GB total | `) + chalk.white(`${freeRamInGB.toFixed(2)}GB libre`))
+
 } catch (e) {
   console.log('[Banner] Error:', e.message)
 }
