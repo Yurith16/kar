@@ -1,4 +1,4 @@
-import { checkReg } from '../lib/checkReg.js'
+const { checkReg } = require('../lib/checkReg.js')
 
 let handler = async (m, { conn, usedPrefix, command, isAdmin, isBotAdmin }) => {
   const userId = m.sender
@@ -36,16 +36,17 @@ let handler = async (m, { conn, usedPrefix, command, isAdmin, isBotAdmin }) => {
     }
 
   } catch (error) {
+    console.error(error)
     await m.react('❌')
     await conn.reply(m.chat, '> Lo siento, hubo un error.', m)
   }
 }
 
-handler.help = ['abrir',"cerrar"]
+handler.help = ['abrir', "cerrar"]
 handler.tags = ['group']
 handler.command = ['abrir', 'cerrar']
 handler.admin = true
 handler.botAdmin = true
 handler.group = true
 
-export default handler
+module.exports = handler
