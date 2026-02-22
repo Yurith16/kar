@@ -101,6 +101,7 @@ let handler = async (m, { conn, text, usedPrefix }) => {
     }
 };
 
+handler.tags = ['downloader'];
 handler.help = ["play"];
 handler.command = ["play"];
 handler.group = true;

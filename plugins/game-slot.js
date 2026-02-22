@@ -3,62 +3,46 @@ const { checkReg } = require('../lib/checkReg.js')
 
 let handler = async (m, { conn, text, usedPrefix, command }) => {
     let user = global.db.data.users[m.sender]
-    
+    let h = ["🍃", "🌿", "🍀", "🌱", "☘️"].getRandom()
+    let nameHandle = user.registeredName || user.name || conn.getName(m.sender)
+
     if (await checkReg(m, user)) return
 
     let apuesta = parseInt(text)
     if (isNaN(apuesta) || apuesta < 100) {
-        return m.reply(`> 🎀 *Uso correcto:*\n> \`${usedPrefix + command} <cantidad>\`\n\n_Mínimo: 100 Coins._`)
+        return m.reply(`> ${h} *Modo de uso:*\n> \`${usedPrefix + command} <cantidad>\`\n\n> ✨ _Mínimo: 100 Coins._`)
     }
 
     if (user.coin < apuesta) {
-        return m.reply(`> 🥀 *Pobreza:* No tienes suficientes coins, corazón.`)
+        return m.reply(`> 🥀 *Fondos insuficientes:* No tienes suficientes coins, vida mía.`)
     }
 
     if (apuesta > 50000) {
-        return m.reply(`> ⚠️ *Límite:* La apuesta máxima es de 50,000 coins.`)
+        return m.reply(`> ⚠️ *Límite:* La apuesta máxima permitida es de 50,000 coins.`)
     }
 
-    // Emojis de la suerte
-    const emojis = ["🍎", "🍋", "🍇", "🍒", "💎", "🎰"];
-    
-    // --- SISTEMA DE PROBABILIDAD (30% Win Rate) ---
+    const emojis = ["🍎", "🍋", "🍇", "🍒", "💎", "🎰"]
+
+    // --- PROBABILIDAD CONFIGURADA: 30% Gana / 70% Pierde ---
     let ganar = Math.random() < 0.30 
-    
-    // Matriz 3x3
-    let matrix = [
-        [], // Fila 1
-        [], // Fila 2
-        []  // Fila 3
-    ]
+    let matrix = [[], [], []]
 
     if (ganar) {
-        // GANAR: Asegurar al menos una línea ganadora
         let lineaGanadora = Math.floor(Math.random() * 3)
-        let emojiGanador = emojis[Math.floor(Math.random() * emojis.length)]
-        
-        // Llenar la línea ganadora con el mismo emoji
+        let emojiGanador = emojis.getRandom()
         matrix[lineaGanadora] = [emojiGanador, emojiGanador, emojiGanador]
-        
-        // Llenar las otras líneas aleatoriamente
+
         for (let i = 0; i < 3; i++) {
             if (i !== lineaGanadora) {
-                matrix[i] = [
-                    emojis[Math.floor(Math.random() * emojis.length)],
-                    emojis[Math.floor(Math.random() * emojis.length)],
-                    emojis[Math.floor(Math.random() * emojis.length)]
-                ]
+                matrix[i] = [emojis.getRandom(), emojis.getRandom(), emojis.getRandom()]
             }
         }
     } else {
-        // PERDER: No hay líneas ganadoras
         for (let i = 0; i < 3; i++) {
             let fila = []
             for (let j = 0; j < 3; j++) {
                 let emoji
-                do {
-                    emoji = emojis[Math.floor(Math.random() * emojis.length)]
-                } while (fila.includes(emoji))
+                do { emoji = emojis.getRandom() } while (fila.includes(emoji))
                 fila.push(emoji)
             }
             matrix[i] = fila
@@ -68,86 +52,47 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     user.coin -= apuesta
     await m.react('🎰')
 
-    // 🎰 DISEÑO SIMPLE Y LIMPIO 🎰
-    let spinning = `🎰 *SLOTS* 🎰\n\n`
-    
-    // Matriz 3x3 simple - solo emojis
-    spinning += `   ${matrix[0][0]}  ${matrix[0][1]}  ${matrix[0][2]}\n`
-    spinning += `   ${matrix[1][0]}  ${matrix[1][1]}  ${matrix[1][2]}\n`
-    spinning += `   ${matrix[2][0]}  ${matrix[2][1]}  ${matrix[2][2]}\n\n`
-
-    // Verificar líneas ganadoras
     let gano = false
     let premio = 0
     let diamantes = 0
 
-    // Revisar filas
-    for (let i = 0; i < 3; i++) {
-        if (matrix[i][0] === matrix[i][1] && matrix[i][1] === matrix[i][2]) {
+    const verificar = (a, b, c) => {
+        if (a === b && b === c) {
             gano = true
-            let multiplicador = 0
-            if (matrix[i][0] === "💎") multiplicador = 10
-            else if (matrix[i][0] === "🎰") multiplicador = 15
-            else multiplicador = 5
-            premio += apuesta * multiplicador
-            if (matrix[i][0] === "💎") diamantes += 5
-            if (matrix[i][0] === "🎰") diamantes += 10
+            let mult = a === "🎰" ? 15 : a === "💎" ? 10 : 5
+            premio += apuesta * mult
+            if (a === "💎") diamantes += 5
+            if (a === "🎰") diamantes += 10
         }
     }
 
-    // Revisar columnas
-    for (let j = 0; j < 3; j++) {
-        if (matrix[0][j] === matrix[1][j] && matrix[1][j] === matrix[2][j]) {
-            gano = true
-            let multiplicador = 0
-            if (matrix[0][j] === "💎") multiplicador = 10
-            else if (matrix[0][j] === "🎰") multiplicador = 15
-            else multiplicador = 5
-            premio += apuesta * multiplicador
-            if (matrix[0][j] === "💎") diamantes += 5
-            if (matrix[0][j] === "🎰") diamantes += 10
-        }
-    }
+    // Verificación de todas las líneas posibles
+    for (let i = 0; i < 3; i++) verificar(matrix[i][0], matrix[i][1], matrix[i][2])
+    for (let i = 0; i < 3; i++) verificar(matrix[0][i], matrix[1][i], matrix[2][i])
+    verificar(matrix[0][0], matrix[1][1], matrix[2][2])
+    verificar(matrix[0][2], matrix[1][1], matrix[2][0])
 
-    // Revisar diagonales
-    if (matrix[0][0] === matrix[1][1] && matrix[1][1] === matrix[2][2]) {
-        gano = true
-        let multiplicador = 0
-        if (matrix[0][0] === "💎") multiplicador = 10
-        else if (matrix[0][0] === "🎰") multiplicador = 15
-        else multiplicador = 5
-        premio += apuesta * multiplicador
-        if (matrix[0][0] === "💎") diamantes += 5
-        if (matrix[0][0] === "🎰") diamantes += 10
-    }
-    
-    if (matrix[0][2] === matrix[1][1] && matrix[1][1] === matrix[2][0]) {
-        gano = true
-        let multiplicador = 0
-        if (matrix[0][2] === "💎") multiplicador = 10
-        else if (matrix[0][2] === "🎰") multiplicador = 15
-        else multiplicador = 5
-        premio += apuesta * multiplicador
-        if (matrix[0][2] === "💎") diamantes += 5
-        if (matrix[0][2] === "🎰") diamantes += 10
-    }
+    let txt = `> ${h} *「 𝙺𝙰𝚁𝙱𝙾𝚃 𝚂𝙻𝙾𝚃𝚂 」* ${h}\n\n`
+    txt += `     ${matrix[0][0]}  ${matrix[0][1]}  ${matrix[0][2]}\n`
+    txt += `     ${matrix[1][0]}  ${matrix[1][1]}  ${matrix[1][2]}\n`
+    txt += `     ${matrix[2][0]}  ${matrix[2][1]}  ${matrix[2][2]}\n\n`
 
     if (gano) {
         user.coin += premio
         user.diamond = (user.diamond || 0) + diamantes
         await m.react('🎉')
-        
-        spinning += `✨ *¡FELICIDADES, AMOR!* ✨\n`
-        spinning += `> 🪙 *Premio:* +${premio.toLocaleString()} Coins\n`
-        if (diamantes > 0) spinning += `> 💎 *Bono:* +${diamantes} Diamantes\n`
+        txt += `> ✨ *¡FELICIDADES, ${nameHandle.toUpperCase()}!* ✨\n`
+        txt += `> 🪙 *Ganancia:* » +${premio.toLocaleString()} Coins\n`
+        if (diamantes > 0) txt += `> 💎 *Bono:* » +${diamantes} Diamantes\n\n`
+        txt += `> _Tu suerte es tan brillante como tú._`
     } else {
         await m.react('❌')
-        spinning += `🥀 *Perdiste...*\n`
-        spinning += `> 💔 *-${apuesta.toLocaleString()} Coins*\n`
-        spinning += `\n_La próxima será, cielo._`
+        txt += `> 🥀 *RESULTADO:* » Derrota\n`
+        txt += `> 💔 *Pérdida:* » -${apuesta.toLocaleString()} Coins\n\n`
+        txt += `> _No te preocupes, el éxito requiere persistencia._`
     }
 
-    await m.reply(spinning)
+    await m.reply(txt)
     await saveDatabase()
 }
 

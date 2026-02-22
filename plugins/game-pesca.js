@@ -1,8 +1,5 @@
 const { checkReg } = require('../lib/checkReg.js')
 
-const HOJITAS = ['🌿', '🍃', '🍀', '🌱', '☘️']
-const REACCIONES = ['🎣', '⚓', '🌊', '🛶', '🐠', '🐳', '🐡', '🐙', '🐚']
-
 const PECES = [
   { emoji: '🦐', nombre: 'Camarón', coins: 80 },
   { emoji: '🦀', nombre: 'Cangrejo', coins: 150 },
@@ -26,19 +23,18 @@ const PECES = [
   { emoji: '🚢', nombre: 'Tesoro Hundido', coins: 8000 }
 ]
 
-function getLeaf() { return HOJITAS[Math.floor(Math.random() * HOJITAS.length)] }
-function getReact() { return REACCIONES[Math.floor(Math.random() * REACCIONES.length)] }
-
 let handler = async (m, { conn }) => {
   let user = global.db.data.users[m.sender]
   if (await checkReg(m, user)) return
 
-  // Cooldown de 10 minutos (600,000 ms) 🫦
+  // Cooldown de 10 minutos
   let cooldown = 600000 
   let time = (user.lastpesca || 0) + cooldown
+  let h = ["🍃", "🌿", "🍀", "🌱", "☘️"].getRandom()
+
   if (new Date() - (user.lastpesca || 0) < cooldown) {
       await m.react('⏳')
-      return m.reply(`> ⏳ Vuelve en: *${msToTime(time - new Date())}*`)
+      return m.reply(`> ⏳ *Aguas movidas, vida mía.* Espera un poco para volver a lanzar el anzuelo. Vuelve en: **${msToTime(time - new Date())}**`)
   }
 
   try {
@@ -48,32 +44,41 @@ let handler = async (m, { conn }) => {
     let totalExp = 0
 
     for (let i = 0; i < cantidad; i++) {
-      let pez = PECES[Math.floor(Math.random() * PECES.length)]
+      let pez = PECES.getRandom()
       let exp = Math.floor(Math.random() * 180) + 60
       capturas.push({ ...pez, exp })
       totalCoins += pez.coins
       totalExp += exp
     }
-    
-    await m.react(getReact())
+
+    const reacciones = ['🎣', '⚓', '🌊', '🛶', '🐠', '🐳', '🐡', '🐙', '🐚']
+    await m.react(reacciones.getRandom())
 
     user.coin = (user.coin || 0) + totalCoins
     user.exp = (user.exp || 0) + totalExp
     user.lastpesca = new Date() * 1
-    
-    let h = getLeaf()
-    let txt = `${h} DETALLES DE PESCA\n\n`
-    capturas.forEach(p => { txt += `> *${p.emoji} ${p.nombre}* = ${p.coins} coins\n` })
-    txt += `\n> 💰 Total Coins : +${totalCoins}\n`
-    txt += `> ✨ Total Exp : +${totalExp}`
 
-    m.reply(txt)
-    await m.react('⚙️')
+    let txt = `> ${h} *「 𝚁𝙴𝙿𝙾𝚁𝚃𝙴 𝙳𝙴 𝙿𝙴𝚂𝙲𝙰 」* ${h}\n\n`
+
+    capturas.forEach(p => {
+      txt += `> ${p.emoji} *${p.nombre}* » +${p.coins} 🪙\n`
+    })
+
+    txt += `\n> 💰 *Total Ganado:* » ${totalCoins.toLocaleString()} 🪙\n`
+    txt += `> ✨ *Total Exp:* » +${totalExp.toLocaleString()}\n\n`
+    txt += `> 🌊 _¡Qué buena mano tienes con el anzuelo, tesoro!_`
+
+    let messageOptions = { text: txt }
+    if (global.rcanal && global.rcanal.contextInfo) {
+        messageOptions.contextInfo = global.rcanal.contextInfo
+    }
+
+    await conn.sendMessage(m.chat, messageOptions, { quoted: m })
 
   } catch (error) {
     console.error(error)
     await m.react('❌')
-    return m.reply(`> Hubo un drama en el océano. No perdiste nada, cielo. 🫦`)
+    return m.reply(`> 🌪️ Hubo un error en las corrientes marinas. Inténtalo más tarde, cielo.`)
   }
 }
 

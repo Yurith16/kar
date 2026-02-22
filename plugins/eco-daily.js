@@ -1,69 +1,56 @@
 const { checkReg } = require('../lib/checkReg.js')
 
-// Secuencia de hojitas y reacciones estilo KarBot
-const HOJITAS = ['🌿', '🍃', '🍀', '🌱', '☘️']
-const REACCIONES = ['🌿', '🍃', '🍀', '🌱', '🌼', '🌸', '🌺', '💮', '🥀', '🌻', '🌹', '🌷', '🏵️']
-
-function getLeaf() {
-    return HOJITAS[Math.floor(Math.random() * HOJITAS.length)]
-}
-
-function getReact() {
-    return REACCIONES[Math.floor(Math.random() * REACCIONES.length)]
-}
-
 let handler = async (m, { conn }) => {
   let user = global.db.data.users[m.sender]
-
-  // Verificación de registro
   if (await checkReg(m, user)) return
 
-  // Cooldown de 24 horas (86,400,000 ms)
   let cooldown = 86400000 
   let time = (user.lastclaim || 0) + cooldown
   if (new Date() - (user.lastclaim || 0) < cooldown) {
       await m.react('⏳')
-      return m.reply(`> ⏳ Ya has reclamado tu regalo. Vuelve en: **${msToTime(time - new Date())}**`)
+      return m.reply(`> ⏳ *¡Paciencia, tesoro!* Vuelve en:\n> 🕒 *${msToTime(time - new Date())}*`)
   }
 
-  // Recompensas Considerables
-  let coinHasil = Math.floor(Math.random() * 2500) + 1000 // 1000 - 3500
-  let expHasil = Math.floor(Math.random() * 3000) + 1500 // 1500 - 4500
-  let diamondHasil = Math.floor(Math.random() * 10) + 5   // 5 - 15
-  
-  // Reacción aleatoria de KarBot
-  await m.react(getReact())
+  let coinHasil = Math.floor(Math.random() * 2500) + 1000 
+  let expHasil = Math.floor(Math.random() * 3000) + 1500 
+  let diamondHasil = Math.floor(Math.random() * 10) + 5
+  let hotpassHasil = Math.floor(Math.random() * 3) + 1 
 
-  // Actualización de datos
+  const emjisNaturaleza = ['🌿', '🍃', '🍀', '🌱', '🌼', '🌸', '🌺', '🌹', '🌷']
+  await m.react(emjisNaturaleza.getRandom())
+
   user.coin = (user.coin || 0) + coinHasil
   user.exp = (user.exp || 0) + expHasil
   user.diamond = (user.diamond || 0) + diamondHasil
+  user.hotpass = (user.hotpass || 0) + hotpassHasil
   user.lastclaim = new Date() * 1
-  
-  let h = getLeaf()
-  let txt = `${h} *RECOMPENSA DIARIA*\n\n`
-  txt += `> 🪙 Coin : +${coinHasil}\n`
-  txt += `> ✨ Exp : +${expHasil}\n`
-  txt += `> 💎 Diamond : +${diamondHasil}`
 
-  m.reply(txt)
+  let h = emjisNaturaleza.getRandom()
+  let txt = `> ${h} *「 𝚁𝙴𝙲𝙾𝙼𝙿𝙴𝙽𝚂𝙰 𝙳𝙸𝙰𝚁𝙸𝙰 」* ${h}\n\n`
+  txt += `> 💰 *Coin:* » +${coinHasil.toLocaleString()}\n`
+  txt += `> ✨ *Exp:* » +${expHasil.toLocaleString()}\n`
+  txt += `> 💎 *Diamond:* » +${diamondHasil}\n`
+  txt += `> 🔥 *HotPass:* » +${hotpassHasil}\n\n`
+  txt += `> ✨ *¡Disfruta tus regalos del día!*`
+
+  // --- ENVIAR CON DISEÑO SEGURO ---
+  let messageOptions = { text: txt }
+  if (global.rcanal && global.rcanal.contextInfo) {
+      messageOptions.contextInfo = global.rcanal.contextInfo
+  }
+
+  await conn.sendMessage(m.chat, messageOptions, { quoted: m })
 }
 
 handler.help = ['daily']
 handler.tags = ['economy']
-handler.command = ['daily', 'diario', 'recompensa'] 
+handler.command = /^(daily|diario|recompensa|claim)$/i
 handler.register = true
-
 module.exports = handler
 
 function msToTime(duration) {
     let seconds = Math.floor((duration / 1000) % 60)
     let minutes = Math.floor((duration / (1000 * 60)) % 60)
     let hours = Math.floor((duration / (1000 * 60 * 60)) % 24)
-
-    hours = (hours < 10) ? "0" + hours : hours
-    minutes = (minutes < 10) ? "0" + minutes : minutes
-    seconds = (seconds < 10) ? "0" + seconds : seconds
-
-    return `${hours}h ${minutes}m ${seconds}s`
+    return `${hours < 10 ? "0" + hours : hours}h ${minutes < 10 ? "0" + minutes : minutes}m ${seconds < 10 ? "0" + seconds : seconds}s`
 }

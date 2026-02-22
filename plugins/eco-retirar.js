@@ -1,42 +1,48 @@
 const { checkReg } = require('../lib/checkReg.js')
 
-const HOJITAS = ['🌿', '🍃', '🍀', '🌱', '☘️']
-const REACCIONES = ['🏛️', '💰', '🏦', '💹', '💳']
-
-function getLeaf() { return HOJITAS[Math.floor(Math.random() * HOJITAS.length)] }
-function getReact() { return REACCIONES[Math.floor(Math.random() * REACCIONES.length)] }
-
 let handler = async (m, { conn, args }) => {
   let user = global.db.data.users[m.sender]
   if (await checkReg(m, user)) return
 
   let amount
   if (args[0] === 'all') {
-    amount = user.bank
+    amount = user.bank || 0
   } else {
     amount = parseInt(args[0])
   }
 
+  const h = ["🍃", "🌿", "🍀", "🌱", "☘️"].getRandom()
+
   if (!amount || isNaN(amount) || amount <= 0) {
-    return m.reply(`> ${getLeaf()} *Ingresa una cantidad válida para retirar.*\n> Ejemplo: *.wd 100* o *.wd all*`)
+    return m.reply(`> ${h} *Atención financiera.* Indica la cantidad exacta a retirar.\n> 💡 *Uso:* .wd 100 o .wd all`)
   }
 
   if ((user.bank || 0) < amount) {
-    return m.reply(`> ❌ No tienes suficientes *Coins* en el banco para retirar esa cantidad.`)
+    return m.reply(`> ❌ *Fondos insuficientes, vida mía.* Tu cuenta bancaria no dispone de esa cantidad.`)
   }
 
-  await m.react(getReact())
+  // Reacciones bancarias
+  const reacciones = ['🏛️', '💰', '🏦', '💹', '💳']
+  await m.react(reacciones.getRandom())
 
+  // Operación
   user.bank -= amount
   user.coin = (user.coin || 0) + amount
 
-  let h = getLeaf()
-  let txt = `${h} *RETIRO BANCARIO* ${h}\n\n`
-  txt += `> 🏛️ Retirado : ${amount.toLocaleString()} 🪙\n`
-  txt += `> 💳 En cuenta : ${user.bank.toLocaleString()} 🪙\n`
-  txt += `> 💰 Cartera : ${user.coin.toLocaleString()} 🪙`
+  // Diseño KarBot
+  let txt = `> ${h} *「 𝚁𝙴𝚃𝙸𝚁𝙾 𝙱𝙰𝙽𝙲𝙰𝚁𝙸𝙾 」* ${h}\n\n`
+  txt += `> 📤 *Retirado:* » ${amount.toLocaleString()} 🪙\n`
+  txt += `> 💳 *En Banco:* » ${user.bank.toLocaleString()} 🪙\n`
+  txt += `> 💰 *En Cartera:* » ${user.coin.toLocaleString()} 🪙\n\n`
+  txt += `> ✨ _Transacción completada con éxito. Gástalo con inteligencia._`
 
-  m.reply(txt)
+  // Envío seguro
+  let messageOptions = { text: txt }
+  if (global.rcanal && global.rcanal.contextInfo) {
+      messageOptions.contextInfo = global.rcanal.contextInfo
+  }
+
+  await conn.sendMessage(m.chat, messageOptions, { quoted: m })
 }
 
 handler.help = ['retirar']

@@ -34,30 +34,33 @@ let handler = async (m, { conn, usedPrefix }) => {
       }
   }
 
-  await m.react(['🌸', '✨', '🌿', '💎'].sort(() => 0.5 - Math.random())[0])
+  await m.react('💎')
 
-  // --- CONSTRUCCIÓN DEL MENSAJE ---
-  let txt = `┌───「 *PERFIL USUARIO* 」\n`
-  txt += `▢ *🔖 Nombre:* ${nameHandle}\n`
-  txt += `▢ *📱 Número:* ${userId}\n`
-  txt += `▢ *📍 Edad:* ${user.age || 'No definida'}\n`
-  txt += `▢ *🧬 Género:* ${user.genre || 'No definido'}\n`
-  txt += `▢ *💍 Estado:* ${user.marry ? 'Casado(a) con ' + (global.db.data.users[user.marry]?.name || 'alguien') : 'Soltero(a)'}\n`
-  txt += `\n`
-  txt += `▢ *⚠️ Warns:* ${user.warn || 0}/5\n`
-  txt += `▢ *🪙 Monedas:* ${(user.coin || 0).toLocaleString()}\n`
-  txt += `▢ *🏛️ Banco:* ${(user.bank || 0).toLocaleString()}\n`
-  txt += `▢ *💎 Diamonds:* ${(user.diamond || 0).toLocaleString()}\n`
-  txt += `▢ *🎫 HotPass:* ${(user.hotpass || 0).toLocaleString()}\n`
-  txt += `\n`
-  txt += `▢ *🆙 Nivel:* ${user.level || 0}\n`
-  txt += `▢ *⬆️ XP:* ${user.exp || 0} (${progreso.toFixed(1)}%)\n`
-  txt += `▢ *🏆 Rango:* ${rango}\n`
-  txt += `\n`
-  txt += `▢ *🔥 Racha Juego:* ${user.racha || 0} victorias\n`
-  txt += `▢ *📇 Registro:* ${sn}\n`
-  txt += `▢ *🎟️ Élite:* ${user.premium ? '✅' : '❎'}\n`
-  txt += `└──────────────`
+  // --- CONSTRUCCIÓN ESTILO KARBOT CON FUENTE ESPECIAL ---
+  let txt = `> 👤 *「 𝙿𝙴𝚁𝙵𝙸𝙻 𝙳𝙴 𝚄𝚂𝚄𝙰𝚁𝙸𝙾 」*\n\n`
+  txt += `> 🌿 *🔖 Nombre:* » ${nameHandle}\n`
+  txt += `> 🌿 *📱 Número:* » ${userId}\n`
+  txt += `> 🌿 *📍 Edad:* » ${user.age || 'No definida'}\n`
+  txt += `> 🌿 *🧬 Género:* » ${user.genre || 'No definido'}\n`
+  txt += `> 🌿 *💍 Estado:* » ${user.marry ? 'Casado(a) con ' + (global.db.data.users[user.marry]?.name || 'alguien') : 'Soltero(a)'}\n\n`
+
+  txt += `> 💎 *「 𝙴𝙲𝙾𝙽𝙾𝙼𝙸́𝙰 𝚈 𝚂𝚃𝙰𝚃𝚂 」*\n\n`
+  txt += `> 🍀 *⚠️ Warns:* » ${user.warn || 0}/5\n`
+  txt += `> 🍀 *🪙 Monedas:* » ${(user.coin || 0).toLocaleString()}\n`
+  txt += `> 🍀 *🏛️ Banco:* » ${(user.bank || 0).toLocaleString()}\n`
+  txt += `> 🍀 *💎 Diamonds:* » ${(user.diamond || 0).toLocaleString()}\n`
+  txt += `> 🍀 *🎫 HotPass:* » ${(user.hotpass || 0).toLocaleString()}\n\n`
+
+  txt += `> 🆙 *「 𝙿𝚁𝙾𝙶𝚁𝙴𝚂𝙾 」*\n\n`
+  txt += `> ⚘ *Nivel:* » ${user.level || 0}\n`
+  txt += `> ⚘ *XP:* » ${user.exp || 0} (${progreso.toFixed(1)}%)\n`
+  txt += `> ⚘ *Rango:* » ${rango}\n\n`
+
+  txt += `> ✨ *「 𝙸𝙽𝙵𝙾 𝙰𝙳𝙸𝙲𝙸𝙾𝙽𝙰𝙻 」*\n\n`
+  txt += `> 🌼 *Racha Juego:* » ${user.racha || 0} victorias\n`
+  txt += `> 🌼 *Registro:* » ${sn}\n`
+  txt += `> 🌼 *Élite:* » ${user.premium ? '✅' : '❎'}\n\n`
+  txt += `> ⚙️ *𝙺𝙰𝚁 𝚂𝙸𝚂𝚃𝙴𝙼𝙰 𝙳𝚄𝙰𝙻*`
 
   await conn.sendMessage(m.chat, { 
       image: pp instanceof Buffer ? pp : { url: pp.url }, 

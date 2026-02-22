@@ -96,7 +96,7 @@ Usa *${usedPrefix}on* o *${usedPrefix}off* seguido de la opción.`
   m.reply(`*${type}* ha sido ${isEnable ? '*on*' : '*off*'} con exito.`)
 }
 
-handler.help = ['en', 'dis']
+handler.help = ['enable', 'disable']
 handler.tags = ['owner']
 handler.command = /^((en|dis)able|(tru|fals)e|(turn)?o(n|ff)|[01])$/i
 

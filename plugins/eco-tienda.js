@@ -1,42 +1,44 @@
 const { checkReg } = require('../lib/checkReg.js')
 
-const HOJITAS = ['🌿', '🍃', '🍀', '🌱', '☘️']
-const REACCIONES = ['🛒', '🛍️', '📦', '💰', '🏷️']
-
-function getLeaf() { return HOJITAS[Math.floor(Math.random() * HOJITAS.length)] }
-function getReact() { return REACCIONES[Math.floor(Math.random() * REACCIONES.length)] }
-
-// CONFIGURACIÓN DE PRECIOS EQUILIBRADA
+// CONFIGURACIÓN DE PRECIOS AJUSTADA (MÁS JUSTA)
 const PRECIO_DIAMANTE = 5000 
-const PRECIO_HOTPASS_COIN = 80000
-const PRECIO_HOTPASS_DMD = 30
+const PRECIO_HOTPASS_COIN = 50000
+const PRECIO_HOTPASS_DMD = 20
+const PRECIO_PICO = 2000
+const PRECIO_AGUA = 1000
+const PRECIO_MEDICINA = 3500
 
 let handler = async (m, { conn, usedPrefix, command, args }) => {
   let user = global.db.data.users[m.sender]
   if (await checkReg(m, user)) return
 
-  let h = getLeaf()
+  const reacciones = ['🛒', '🛍️', '📦', '💰', '🏷️']
+  let h = ["🍃", "🌿", "🍀", "🌱", "☘️"].getRandom()
   let type = (args[0] || '').toLowerCase()
 
-  if (!type || (type !== 'diamond' && type !== 'hotpass')) {
-    let txt = `${h} *KARBOT STORE* ${h}\n\n`
-    txt += `> 💎 1 Diamond : ${PRECIO_DIAMANTE.toLocaleString()} 🪙\n`
-    txt += `> 🎫 1 HotPass : ${PRECIO_HOTPASS_COIN.toLocaleString()} 🪙\n`
-    txt += `> 🎫 1 HotPass : ${PRECIO_HOTPASS_DMD} 💎\n\n`
-    txt += `*USO*\n`
-    txt += `> ${usedPrefix + command} diamond [cantidad/all]\n`
-    txt += `> ${usedPrefix + command} hotpass [cantidad/all]\n`
-    txt += `> ${usedPrefix + command} hotpass dmd [cantidad/all]`
+  // --- VISTA DE LA TIENDA ---
+  if (!type || !['diamond', 'hotpass', 'pico', 'agua', 'medicina'].includes(type)) {
+    let txt = `> ${h} *「 𝙺𝙰𝚁𝙱𝙾𝚃 𝚂𝚃𝙾𝚁𝙴 」* ${h}\n\n`
+    txt += `> 💎 *Diamond:* » ${PRECIO_DIAMANTE.toLocaleString()} 🪙\n`
+    txt += `> 🎫 *HotPass:* » ${PRECIO_HOTPASS_COIN.toLocaleString()} 🪙\n`
+    txt += `> 🎫 *HotPass:* » ${PRECIO_HOTPASS_DMD} 💎\n\n`
+    txt += `> ⚒️ *「 𝚂𝚄𝙼𝙸𝙽𝙸𝚂𝚃𝚁𝙾𝚂 𝙼𝙸𝙽𝙴𝚁𝙾𝚂 」*\n\n`
+    txt += `> ⛏️ *Pico:* » ${PRECIO_PICO.toLocaleString()} 🪙\n`
+    txt += `> 💧 *Agua:* » ${PRECIO_AGUA.toLocaleString()} 🪙\n`
+    txt += `> 💊 *Medicina:* » ${PRECIO_MEDICINA.toLocaleString()} 🪙\n\n`
+    txt += `*𝚄𝚂𝙾 𝙳𝙴 𝙲𝙾𝙼𝙿𝚁𝙰*\n`
+    txt += `> ${usedPrefix + command} [item] [cantidad]\n`
+    txt += `> _Ejemplo: ${usedPrefix + command} pico 5_`
+
     return m.reply(txt)
   }
 
-  await m.react(getReact())
+  await m.react(reacciones.getRandom())
 
   // FUNCIÓN PARA COBRO AUTOMÁTICO (CARTERA + BANCO)
   const cobrar = (total) => {
     let totalDisponible = (user.coin || 0) + (user.bank || 0)
     if (totalDisponible < total) return false
-    
     if (user.coin >= total) {
       user.coin -= total
     } else {
@@ -47,56 +49,82 @@ let handler = async (m, { conn, usedPrefix, command, args }) => {
     return true
   }
 
-  // --- COMPRA DE DIAMANTES ---
+  let count = args[1] === 'all' ? 0 : parseInt(args[1])
+  if (type !== 'hotpass' && (args[1] !== 'all' && (isNaN(count) || count <= 0))) return m.reply(`> ${h} Indica una cantidad válida, tesoro.`)
+
+  // --- LÓGICA DE COMPRAS ---
+  let itemFinal = ''
+  let gasto = 0
+  let monedaGasto = '🪙'
+
   if (type === 'diamond') {
-    let totalCoinsDisponibles = (user.coin || 0) + (user.bank || 0)
-    let all = Math.floor(totalCoinsDisponibles / PRECIO_DIAMANTE)
-    let count = args[1] === 'all' ? all : parseInt(args[1])
-    
-    if (!count || isNaN(count) || count <= 0) return m.reply(`> ${h} Indica una cantidad válida.`)
-    let totalCost = PRECIO_DIAMANTE * count
-    
-    if (!cobrar(totalCost)) return m.reply(`> ❌ Ni en cartera ni en banco tienes lo suficiente para tanto brillo.`)
-
+    let all = Math.floor(((user.coin || 0) + (user.bank || 0)) / PRECIO_DIAMANTE)
+    count = args[1] === 'all' ? all : count
+    gasto = PRECIO_DIAMANTE * count
+    if (!cobrar(gasto)) return m.reply(`> ❌ No tienes suficiente fortuna para tanto brillo.`)
     user.diamond = (user.diamond || 0) + count
-    m.reply(`${h} *FACTURA DE COMPRA*\n\n> 💎 *Item:* Diamond\n> 📦 *Cant:* ${count.toLocaleString()}\n> 💰 *Gasto:* -${totalCost.toLocaleString()} 🪙\n\n_Firma: KarBot_ 🫦`)
-  }
+    itemFinal = 'Diamond'
+  } 
 
-  // --- COMPRA DE HOTPASS ---
-  if (type === 'hotpass') {
+  else if (type === 'hotpass') {
     let isDmd = args[1] === 'dmd' || args[1] === 'diamante'
     let countArg = isDmd ? args[2] : args[1]
-    
     if (isDmd) {
       let all = Math.floor((user.diamond || 0) / PRECIO_HOTPASS_DMD)
-      let count = countArg === 'all' ? all : parseInt(countArg)
-      if (!count || isNaN(count) || count <= 0) return m.reply(`> ${h} Indica una cantidad válida.`)
-      
-      let totalCost = PRECIO_HOTPASS_DMD * count
-      if ((user.diamond || 0) < totalCost) return m.reply(`> ❌ Te faltan diamantes para este placer.`)
-      
-      user.diamond -= totalCost
-      user.hotpass = (user.hotpass || 0) + count
-      m.reply(`${h} *FACTURA DE COMPRA*\n\n> 🎫 *Item:* HotPass\n> 📦 *Cant:* ${count.toLocaleString()}\n> 💎 *Gasto:* -${totalCost} 💎\n\n_Firma: KarBot_ 🫦`)
+      count = countArg === 'all' ? all : parseInt(countArg)
+      gasto = PRECIO_HOTPASS_DMD * count
+      if ((user.diamond || 0) < gasto) return m.reply(`> ❌ Te faltan diamantes para este placer.`)
+      user.diamond -= gasto
+      monedaGasto = '💎'
     } else {
-      let totalCoinsDisponibles = (user.coin || 0) + (user.bank || 0)
-      let all = Math.floor(totalCoinsDisponibles / PRECIO_HOTPASS_COIN)
-      let count = countArg === 'all' ? all : parseInt(countArg)
-      
-      if (!count || isNaN(count) || count <= 0) return m.reply(`> ${h} Indica una cantidad válida.`)
-      let totalCost = PRECIO_HOTPASS_COIN * count
-      
-      if (!cobrar(totalCost)) return m.reply(`> ❌ Tu fortuna total (banco y cartera) no alcanza para un HotPass.`)
-      
-      user.hotpass = (user.hotpass || 0) + count
-      m.reply(`${h} *FACTURA DE COMPRA*\n\n> 🎫 *Item:* HotPass\n> 📦 *Cant:* ${count.toLocaleString()}\n> 💰 *Gasto:* -${totalCost.toLocaleString()} 🪙\n\n_Firma: KarBot_ 🫦`)
+      let all = Math.floor(((user.coin || 0) + (user.bank || 0)) / PRECIO_HOTPASS_COIN)
+      count = countArg === 'all' ? all : parseInt(countArg)
+      gasto = PRECIO_HOTPASS_COIN * count
+      if (!cobrar(gasto)) return m.reply(`> ❌ No te alcanza para el pase, corazón.`)
     }
+    user.hotpass = (user.hotpass || 0) + count
+    itemFinal = 'HotPass'
   }
+
+  else if (type === 'pico') {
+    gasto = PRECIO_PICO * count
+    if (!cobrar(gasto)) return m.reply(`> ❌ Necesitas más monedas para esta herramienta.`)
+    user.pico = (user.pico || 0) + count
+    itemFinal = 'Pico'
+  }
+
+  else if (type === 'agua') {
+    gasto = PRECIO_AGUA * count
+    if (!cobrar(gasto)) return m.reply(`> ❌ Ni para el agua te alcanza... qué drama.`)
+    user.agua = (user.agua || 0) + count
+    itemFinal = 'Agua'
+  }
+
+  else if (type === 'medicina') {
+    gasto = PRECIO_MEDICINA * count
+    if (!cobrar(gasto)) return m.reply(`> ❌ La salud es importante, y no tienes con qué pagar.`)
+    user.medicina = (user.medicina || 0) + count
+    itemFinal = 'Medicina'
+  }
+
+  // --- FACTURA FINAL ---
+  let txtFactura = `> ${h} *「 𝙵𝙰𝙲𝚃𝚄𝚁𝙰 𝙳𝙴 𝙲𝙾𝙼𝙿𝚁𝙰 」*\n\n`
+  txtFactura += `> 📦 *Item:* » ${itemFinal}\n`
+  txtFactura += `> 🔢 *Cant:* » ${count.toLocaleString()}\n`
+  txtFactura += `> 💰 *Gasto:* » -${gasto.toLocaleString()} ${monedaGasto}\n\n`
+  txtFactura += `> _Firma: KarBot_ 🫦`
+
+  let messageOptions = { text: txtFactura }
+  if (global.rcanal && global.rcanal.contextInfo) {
+      messageOptions.contextInfo = global.rcanal.contextInfo
+  }
+
+  await conn.sendMessage(m.chat, messageOptions, { quoted: m })
 }
 
-handler.help = ['buy']
+handler.help = ['buy', 'tienda']
 handler.tags = ['economy']
-handler.command = ['buy', 'comprar']
+handler.command = ['buy', 'comprar', 'tienda']
 handler.register = true
 
 module.exports = handler

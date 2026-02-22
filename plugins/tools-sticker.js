@@ -2,6 +2,10 @@ const { Sticker, StickerTypes } = require('wa-sticker-formatter')
 
 let handler = async (m, { conn, args, usedPrefix, command }) => {
   let stiker = false
+  let user = global.db.data.users[m.sender]
+
+  // Obtenemos el nombre de registro de la base de datos
+  let nameHandle = user.registeredName || user.name || conn.getName(m.sender)
 
   try {
     let q = m.quoted ? m.quoted : m
@@ -9,7 +13,7 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
 
     if (!/webp|image|video/g.test(mime) && !args[0]) {
       await conn.sendMessage(m.chat, { react: { text: '❌', key: m.key } })
-      return conn.reply(m.chat, '> 🖼️ 𝚁𝙴𝚂𝙿𝙾𝙽𝙳𝙴 𝙰 𝙸𝙼𝙰𝙶𝙴𝙽/𝚅𝙸𝙳𝙴𝙾', m)
+      return conn.reply(m.chat, '> 🖼️ *Atención:* Responde a una imagen o video para crear tu sticker.', m)
     }
 
     await conn.sendMessage(m.chat, { react: { text: '🔄', key: m.key } })
@@ -18,7 +22,7 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
       if (/video/g.test(mime)) {
         if ((q.msg || q).seconds > 180) {
           await conn.sendMessage(m.chat, { react: { text: '❌', key: m.key } })
-          return conn.reply(m.chat, '> ⚠️ 𝙼𝙰́𝚇𝙸𝙼𝙾 𝟹 𝙼𝙸𝙽𝚄𝚃𝙾𝚂', m)
+          return conn.reply(m.chat, '> ⚠️ *Límite:* El video es demasiado largo, vida mía.', m)
         }
       }
 
@@ -28,8 +32,8 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
       const stickerOptions = {
         type: StickerTypes.FULL,
         quality: 70,
-        pack: global.packname || "⚙️ 𝙺𝙰𝚁𝙱𝙾𝚃 ⚙️",
-        author: global.botname || "⚙️ 𝙺𝙰𝚁𝙱𝙾𝚃 ⚙️"
+        pack: '', // Sin nombre de paquete
+        author: nameHandle // Solo el nombre de registro
       }
 
       const sticker = new Sticker(img, stickerOptions)
@@ -40,15 +44,15 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
         const stickerOptions = {
           type: StickerTypes.FULL,
           quality: 70,
-          pack: global.packname || "⚙️ 𝙺𝙰𝚁𝙱𝙾𝚃 ⚙️",
-          author: global.botname || "⚙️ 𝙺𝙰𝚁𝙱𝙾𝚃 ⚙️"
+          pack: '',
+          author: nameHandle
         }
 
         const sticker = new Sticker(args[0], stickerOptions)
         stiker = await sticker.toBuffer()
       } else {
         await conn.sendMessage(m.chat, { react: { text: '❌', key: m.key } })
-        return conn.reply(m.chat, '> ❌ 𝚄𝚁𝙻 𝙸𝙽𝚅𝙰́𝙻𝙸𝙳𝙰', m)
+        return conn.reply(m.chat, '> ❌ *Error:* Esa URL no me sirve, corazón.', m)
       }
     }
 
@@ -57,14 +61,14 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
       await conn.sendMessage(m.chat, {
         sticker: stiker
       }, { quoted: fkontak })
-      
+
       await conn.sendMessage(m.chat, { react: { text: '✅', key: m.key } })
     }
 
   } catch (error) {
     console.error('Error en sticker:', error)
     await conn.sendMessage(m.chat, { react: { text: '❌', key: m.key } })
-    await conn.reply(m.chat, '> ⚠️ 𝙴𝚁𝚁𝙾𝚁 𝙰𝙻 𝙲𝚁𝙴𝙰𝚁', m)
+    await conn.reply(m.chat, '> ⚠️ *Aviso:* Hubo un error técnico con el sticker.', m)
   }
 }
 
@@ -75,7 +79,7 @@ async function makeFkontak() {
     const thumb2 = Buffer.from(await res.arrayBuffer())
     return {
       key: { participants: '0@s.whatsapp.net', remoteJid: 'status@broadcast', fromMe: false, id: 'Halo' },
-      message: { locationMessage: { name: global.packname || '🖼️ 𝚂𝚃𝙸𝙲𝙺𝙴𝚁', jpegThumbnail: thumb2 } },
+      message: { locationMessage: { name: '🖼️ 𝚂𝚃𝙸𝙲𝙺𝙴𝚁', jpegThumbnail: thumb2 } },
       participant: '0@s.whatsapp.net'
     }
   } catch {
@@ -83,9 +87,9 @@ async function makeFkontak() {
   }
 }
 
-handler.help = [ 's (crear stickers)']
+handler.help = ['s', 'sticker']
 handler.tags = ['tools']
-handler.command = ['s', 'sticker']
+handler.command = /^(s|sticker)$/i
 
 const isUrl = (text) => {
   return text.match(new RegExp(/https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&/=]*)(jpe?g|gif|png|webp)/, 'gi'))

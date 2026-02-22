@@ -102,6 +102,7 @@ let handler = async (m, { conn, text }) => {
     }
 };
 
+handler.tags = ['downloader'];
 handler.help = ['play2'];
 handler.command = ['play2', 'video'];
 handler.group = true;

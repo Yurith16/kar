@@ -1,21 +1,37 @@
 const { checkReg } = require('../lib/checkReg.js')
 
-// Estética KarBot
-const HOJITAS = ['🌿', '🍃', '🍀', '🌱', '☘️']
-const REACCIONES = ['🎭', '🔫', '💣', '💵', '🧤', '🚨', '⛓️']
-
-// 30 Acciones de crimen directo y crudo 🫦
+// 30 Acciones de crimen de alto riesgo
 const CRIMENES = [
-  'Asaltaste el museo nacional', 'Entraste a robar al banco central', 'Secuestraste a un empresario millonario',
-  'Raptaste a una niña en el parque', 'Violaste a una anciana en su domicilio', 'Abusaste de una mujer en un callejón',
-  'Le robaste el auto a un civil a punta de pistola', 'Extorsionaste a un dueño de negocio local', 'Asaltaste un camión de caudales',
-  'Secuestraste a un político corrupto', 'Entraste a una mansión y robaste todo', 'Raptaste a un heredero por rescate',
-  'Violaste a una joven que caminaba sola', 'Le arrebataste la bolsa a una mujer con violencia', 'Asaltaste una joyería de lujo',
-  'Secuestraste a un periodista importante', 'Abusaste de un inocente en la oscuridad', 'Entraste a robar a una tienda de armas',
-  'Raptaste a la hija de un oficial', 'Violaste la seguridad de un bunker privado', 'Le robaste la cartera a un anciano',
-  'Extorsionaste a una familia adinerada', 'Asaltaste un casino clandestino', 'Secuestraste a un modelo famoso',
-  'Abusaste de tu poder para robar a un civil', 'Entraste a una iglesia y robaste las ofrendas', 'Raptaste a un niño para pedir oro',
-  'Violaste la privacidad de una mujer y la robaste', 'Asaltaste una gasolinera a medianoche', 'Secuestraste a un rival de la mafia'
+  'Asaltaste el museo nacional con un equipo de élite',
+  'Entraste a robar a la bóveda del banco central',
+  'Secuestraste a un empresario millonario en su yate',
+  'Hackeaste las cuentas de un magnate tecnológico',
+  'Robaste un prototipo de auto deportivo de lujo',
+  'Extorsionaste a un político corrupto con fotos prohibidas',
+  'Asaltaste un camión de caudales en plena autopista',
+  'Secuestraste a un heredero por un rescate millonario',
+  'Entraste a una mansión en Beverly Hills y vaciaste la caja fuerte',
+  'Arrebataste un maletín lleno de diamantes en el aeropuerto',
+  'Asaltaste una joyería de la quinta avenida',
+  'Secuestraste a un periodista que sabía demasiado',
+  'Entraste a robar a un almacén de armas ilegales',
+  'Burlaste la seguridad de un bunker privado',
+  'Extorsionaste a una familia adinerada de la ciudad',
+  'Asaltaste un casino clandestino de alta alcurnia',
+  'Secuestraste a un modelo famoso en medio de una pasarela',
+  'Entraste a una catedral y robaste las reliquias de oro',
+  'Asaltaste una gasolinera de madrugada para lavar dinero',
+  'Secuestraste a un rival de la mafia italiana',
+  'Robaste un cargamento de oro en el puerto',
+  'Interceptaste una transferencia bancaria internacional',
+  'Vaciaste las cuentas de una organización fantasma',
+  'Robaste una obra de arte valuada en millones',
+  'Saboteaste una subasta de antigüedades para robar el botín',
+  'Asaltaste un club privado de apuestas ilegales',
+  'Secuestraste al contador de un cartel rival',
+  'Robaste un helicóptero privado para un cliente anónimo',
+  'Extorsionaste al jefe de seguridad de una multinacional',
+  'Realizaste un atraco perfecto en una convención de relojes'
 ]
 
 const BOTIN = [
@@ -27,28 +43,27 @@ const BOTIN = [
   { emoji: '💍', nombre: 'Anillo de Diamante', diamonds: 5 }
 ]
 
-function getLeaf() { return HOJITAS[Math.floor(Math.random() * HOJITAS.length)] }
-function getReact() { return REACCIONES[Math.floor(Math.random() * REACCIONES.length)] }
-
 let handler = async (m, { conn }) => {
   let user = global.db.data.users[m.sender]
   if (await checkReg(m, user)) return
 
-  // Cooldown de 5 minutos (300,000 ms) 🫦
   let cooldown = 300000 
   let time = (user.lastcrime || 0) + cooldown
+  let h = ["🍃", "🌿", "🍀", "🌱", "☘️"].getRandom()
+
   if (new Date() - (user.lastcrime || 0) < cooldown) {
       await m.react('⏳')
-      return m.reply(`> ⏳ La policía aún te busca, cielo. Escóndete por: *${msToTime(time - new Date())}*`)
+      return m.reply(`> ⏳ *Escóndete, vida mía.* La policía vigila la zona. Vuelve en: **${msToTime(time - new Date())}**`)
   }
 
   try {
-    // 60% de probabilidad de éxito 🫦
+    // 60% de probabilidad de éxito
     let exito = Math.random() > 0.4
-    await m.react(getReact())
+    const reacciones = ['🎭', '🔫', '💣', '💵', '🧤', '🚨', '⛓️']
+    await m.react(reacciones.getRandom())
 
     if (exito) {
-      let accion = CRIMENES[Math.floor(Math.random() * CRIMENES.length)]
+      let accion = CRIMENES.getRandom()
       let cantidadBotin = Math.floor(Math.random() * 2) + 1
       let hallazgos = []
       let totalCoins = 0
@@ -57,7 +72,7 @@ let handler = async (m, { conn }) => {
       let totalExp = Math.floor(Math.random() * 800) + 400
 
       for (let i = 0; i < cantidadBotin; i++) {
-        let objeto = BOTIN[Math.floor(Math.random() * BOTIN.length)]
+        let objeto = BOTIN.getRandom()
         hallazgos.push(objeto)
         if (objeto.coins) totalCoins += objeto.coins
         if (objeto.diamonds) totalDiamonds += objeto.diamonds
@@ -70,33 +85,38 @@ let handler = async (m, { conn }) => {
       user.exp = (user.exp || 0) + totalExp
       user.lastcrime = new Date() * 1
 
-      let h = getLeaf()
-      let txt = `${h} DETALLES DEL CRIMEN\n\n`
-      txt += `> ✨ *${accion}* y lograste llevarte:\n\n`
+      let txt = `> ${h} *「 𝚁𝙴𝙿𝙾𝚁𝚃𝙴 𝙳𝙴𝙻 𝙲𝚁𝙸𝙼𝙴𝙽 」* ${h}\n\n`
+      txt += `> 🕶️ *Acción:* » ${accion}\n\n`
+      txt += `> 📦 *Botín obtenido:* \n`
 
       hallazgos.forEach(p => {
-        txt += `> *${p.emoji} ${p.nombre}* = ${p.coins ? p.coins + ' coins' : p.diamonds ? p.diamonds + ' diamonds' : p.hotpass + ' hotpass'}\n`
+        txt += `> • ${p.emoji} ${p.nombre} » ${p.coins ? p.coins + ' 🪙' : p.diamonds ? p.diamonds + ' 💎' : p.hotpass + ' 🎫'}\n`
       })
 
-      txt += `\n> 💰 Total Coins : +${totalCoins}\n`
-      if (totalDiamonds > 0) txt += `> 💎 Total Diamond : +${totalDiamonds}\n`
-      if (totalHotpass > 0) txt += `> 🎫 Total HotPass : +${totalHotpass}\n`
-      txt += `> ✨ Total Exp : +${totalExp}`
+      txt += `\n> 💰 *Total Coins:* » +${totalCoins.toLocaleString()}\n`
+      if (totalDiamonds > 0) txt += `> 💎 *Total Diamonds:* » +${totalDiamonds}\n`
+      if (totalHotpass > 0) txt += `> 🎫 *Total HotPass:* » +${totalHotpass}\n`
+      txt += `> ✨ *Total Exp:* » +${totalExp.toLocaleString()}\n\n`
+      txt += `> 💋 _Tu audacia es excitante... el bajo mundo ahora te respeta._`
 
-      m.reply(txt)
+      let messageOptions = { text: txt }
+      if (global.rcanal?.contextInfo) messageOptions.contextInfo = global.rcanal.contextInfo
+
+      await conn.sendMessage(m.chat, messageOptions, { quoted: m })
       await m.react('✅')
+
     } else {
       let perdida = Math.floor(Math.random() * 1500) + 800
       user.coin = Math.max(0, (user.coin || 0) - perdida)
       user.lastcrime = new Date() * 1
       await m.react('🚨')
-      m.reply(`> 🚨 *¡Te atraparon, mi vida!* El plan falló y pagaste una fianza de *${perdida} coins*. 🫦`)
+      m.reply(`> 🚨 *¡Te atraparon, tesoro!* El plan falló y tuviste que pagar una fianza de *${perdida.toLocaleString()} coins*.`)
     }
 
   } catch (error) {
     console.error(error)
     await m.react('❌')
-    return m.reply(`> Hubo un drama técnico en el asalto. Nadie fue arrestado, cielo. 🫦`)
+    return m.reply(`> 🌪️ Hubo un error técnico en el asalto. Nadie fue arrestado esta vez.`)
   }
 }
 
@@ -105,10 +125,10 @@ handler.tags = ['economy']
 handler.command = ['crime', 'crimen', 'robar'] 
 handler.register = true
 
-module.exports = handler
-
 function msToTime(duration) {
     let minutes = Math.floor((duration / (1000 * 60)) % 60)
     let seconds = Math.floor((duration / 1000) % 60)
     return `${minutes}m ${seconds}s`
 }
+
+module.exports = handler

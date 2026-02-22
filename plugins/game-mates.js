@@ -5,25 +5,32 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     conn.math = conn.math ? conn.math : {}
     let id = m.sender 
     let user = global.db.data.users[m.sender]
+    let h = ["🍃", "🌿", "🍀", "🌱", "☘️"].getRandom()
 
     if (await checkReg(m, user)) return
 
     // --- OPCIÓN DE RENDIRSE ---
     if (command === 'rendirse' || text === 'rendirse') {
-        if (!conn.math[id]) return m.reply("> *Cariño:* No tienes ningún desafío activo.")
+        if (!conn.math[id]) return m.reply(`> ${h} *Atención:* No tienes ningún desafío activo en este momento.`)
         delete conn.math[id]
         user.coin = Math.max(0, (user.coin || 0) - 1000)
         user.racha = 0
         await m.react('🥀')
-        return m.reply(`> 🥀 *DERROTA*\n\nTe has rendido. Perdiste *1,000 Coins* y tu racha de fueguito se apagó.`)
+        return m.reply(`> 🥀 *「 𝙳𝙴𝚁𝚁𝙾𝚃𝙰 𝚈 𝚁𝙴𝙽𝙳𝙸𝙲𝙸𝙾𝙽 」*\n\n> Te has rendido ante el cálculo. Perdiste *1,000 Coins* y tu racha 🔥 se ha extinguido.`)
     }
 
-    if (conn.math[id]) return m.reply(`> *Aviso:* Ya tienes un problema activo. Resuelve o usa \`${usedPrefix}rendirse\`.`)
+    if (conn.math[id]) return m.reply(`> ${h} *Aviso:* Ya tienes un problema activo. Resuélvelo o usa \`${usedPrefix}rendirse\`.`)
 
     // --- SELECCIÓN DE DIFICULTAD ---
     let mode = text.toLowerCase().trim()
     if (!['normal', 'dificil', 'extremo'].includes(mode)) {
-        return m.reply(`> ✨ *MODO DE JUEGO*\n\nElige una dificultad para empezar:\n> \`${usedPrefix + command} normal\`\n> \`${usedPrefix + command} dificil\`\n> \`${usedPrefix + command} extremo\``)
+        let menu = `> ${h} *「 𝙳𝙴𝚂𝙰𝙵𝙸𝙾 𝙼𝙰𝚃𝙴𝙼𝙰𝚃𝙸𝙲𝙾 」* ${h}\n\n`
+        menu += `> _Elige una dificultad para comenzar:_ \n\n`
+        menu += `> 🟢 *${usedPrefix + command} normal*\n`
+        menu += `> 🟠 *${usedPrefix + command} dificil*\n`
+        menu += `> 🔴 *${usedPrefix + command} extremo*\n\n`
+        menu += `> ✨ _¡Demuestra tu agilidad mental, vida mía!_`
+        return m.reply(menu)
     }
 
     let n1, n2, op, time, rewardMult
@@ -33,24 +40,25 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         n1 = Math.floor(Math.random() * 30) + 1
         n2 = Math.floor(Math.random() * 20) + 1
         op = ops[Math.floor(Math.random() * 2)]
-        time = 30000 // 30 segundos
+        time = 30000 
         rewardMult = 1
     } else if (mode === 'dificil') {
-        n1 = Math.floor(Math.random() * 100) + 10
-        n2 = Math.floor(Math.random() * 50) + 5
+        // Aumentamos el rango de los números
+        n1 = Math.floor(Math.random() * 150) + 20
+        n2 = Math.floor(Math.random() * 80) + 10
         op = ops[Math.floor(Math.random() * 3)]
-        time = 20000 // 20 segundos
-        rewardMult = 2
-    } else { // Extremo
-        n1 = Math.floor(Math.random() * 500) + 50
-        n2 = Math.floor(Math.random() * 100) + 20
+        time = 18000 // Menos tiempo para más presión
+        rewardMult = 2.5
+    } else { // Extremo (Nivel Dios)
+        n1 = Math.floor(Math.random() * 800) + 100
+        n2 = Math.floor(Math.random() * 150) + 30
         op = ops[Math.floor(Math.random() * 3)]
-        time = 12000 // 12 segundos
-        rewardMult = 4
+        time = 10000 // Solo 10 segundos
+        rewardMult = 5
     }
 
     let result = eval(`${n1} ${op === '*' ? '*' : op} ${n2}`)
-    
+
     conn.math[id] = {
         result: result.toString(),
         mode,
@@ -59,17 +67,17 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         timeout: setTimeout(() => {
             if (conn.math[id]) {
                 user.racha = 0
-                conn.reply(m.chat, `> ⌛ *TIEMPO AGOTADO*\n\nEl resultado era *${result}*. Perdiste tu racha 🔥.`, m)
+                conn.reply(m.chat, `> ⌛ *𝚃𝙸𝙴𝙼𝙿𝙾 𝙰𝙶𝙾𝚃𝙰𝙳𝙾*\n\n> El resultado era *${result}*. Perdiste tu racha 🔥.`, m)
                 delete conn.math[id]
             }
         }, time)
     }
 
     await m.react('🔢')
-    let txt = `🔢 *DESAFÍO ${mode.toUpperCase()}* 🔢\n\n`
-    txt += `> *¿Cuánto es:* \`${n1} ${op.replace('*', 'x')} ${n2}\`?\n`
-    txt += `> *Tiempo:* ${time / 1000} segundos ⏳\n\n`
-    txt += `_¡No hay segundas oportunidades! Responde rápido._`
+    let txt = `> ${h} *「 𝙳𝙴𝚂𝙰𝙵𝙸𝙾: ${mode.toUpperCase()} 」* ${h}\n\n`
+    txt += `> 💡 *¿Cuánto es:* » \`${n1} ${op.replace('*', 'x')} ${n2}\`?\n`
+    txt += `> ⌛ *Tiempo:* » ${time / 1000} segundos\n\n`
+    txt += `> ✨ _Responde directamente a este mensaje._`
 
     await m.reply(txt)
 }
@@ -82,14 +90,18 @@ handler.before = async (m, { conn }) => {
     let game = conn.math[id]
     let user = global.db.data.users[m.sender]
     let input = m.text.trim()
+    let h = ["🍃", "🌿", "🍀", "🌱", "☘️"].getRandom()
+
+    // Obtenemos el nombre registrado
+    let nameHandle = user.registeredName || user.name || conn.getName(m.sender)
 
     if (input === game.result) {
         clearTimeout(game.timeout)
-        
+
         let baseCoin = Math.floor(Math.random() * (1500 - 1000 + 1)) + 1000
-        let rewardCoin = baseCoin * game.rewardMult
-        let rewardDmd = game.mode === 'extremo' ? 3 : (game.mode === 'dificil' ? 2 : 1)
-        
+        let rewardCoin = Math.floor(baseCoin * game.rewardMult)
+        let rewardDmd = game.mode === 'extremo' ? 5 : (game.mode === 'dificil' ? 3 : 1)
+
         user.coin = (user.coin || 0) + rewardCoin
         user.diamond = (user.diamond || 0) + rewardDmd
         user.racha = (user.racha || 0) + 1
@@ -97,28 +109,30 @@ handler.before = async (m, { conn }) => {
         let bonus = ""
         if (user.racha % 5 === 0) {
             user.hotpass = (user.hotpass || 0) + 1
-            bonus = `\n🔥 *BONUS RACHA:* +1 🎫 HotPass`
+            bonus = `\n> 🔥 *BONUS RACHA:* » +1 🎫 HotPass`
         }
 
         await m.react('🎉')
-        let winTxt = `✨ *¡LOGRADO, ID: ${m.sender.split('@')[0]}!* ✨\n\n`
-        winTxt += `> *Modo:* ${game.mode.toUpperCase()}\n`
-        winTxt += `> *Ganancia:* ${rewardCoin.toLocaleString()} 🪙 y ${rewardDmd} 💎\n`
-        winTxt += `> *Racha:* ${user.racha} 🔥${bonus}`
-        
+        let winTxt = `> ${h} *「 𝙲𝙰𝙻𝙲𝚄𝙻𝙾 𝙲𝙾𝚁𝚁𝙴𝙲𝚃𝙾 」* ${h}\n\n`
+        winTxt += `> 👤 *Usuario:* » ${nameHandle}\n`
+        winTxt += `> 🎖️ *Modo:* » ${game.mode.toUpperCase()}\n`
+        winTxt += `> 💰 *Ganancia:* » ${rewardCoin.toLocaleString()} 🪙 y ${rewardDmd} 💎\n`
+        winTxt += `> 🔥 *Racha Actual:* » ${user.racha}${bonus}\n\n`
+        winTxt += `> ✨ _¡Tu intelecto es brillante, tesoro!_`
+
         await m.reply(winTxt)
         delete conn.math[id]
         await saveDatabase()
     } else {
         if (m.text.startsWith('.') || m.text.startsWith('/') || m.text.startsWith('#')) return false
-        
-        // Error inmediato
+
         clearTimeout(game.timeout)
         user.racha = 0
         await m.react('💀')
-        let lose = `💀 *ERROR CRÍTICO* 💀\n\n`
-        lose += `> El resultado era: *${game.result}*\n`
-        lose += `> Fallaste. Tu racha 🔥 se ha extinguido.`
+        let lose = `> 💀 *「 𝙴𝚁𝚁𝙾𝚁 𝙳𝙴 𝙲𝙰𝙻𝙲𝚄𝙻𝙾 」* 💀\n\n`
+        lose += `> El resultado correcto era: *${game.result}*\n`
+        lose += `> Has fallado. Tu racha 🔥 se ha extinguido.\n\n`
+        lose += `> ✨ _Inténtalo de nuevo, no te rindas._`
         await m.reply(lose)
         delete conn.math[id]
     }
