@@ -4,10 +4,12 @@ const ffmpegPath = require('ffmpeg-static');
 const fs = require('fs');
 const path = require('path');
 const { checkReg } = require('../lib/checkReg.js');
+// 👇 AGREGADO: Importar sistema global de descargas
+const descargas = require('./descargas-activas.js');
 
 ffmpeg.setFfmpegPath(ffmpegPath);
 
-const activeVideoDownloads = new Map();
+// 👇 ELIMINADO: const activeVideoDownloads = new Map(); (ahora es global)
 
 let handler = async (m, { conn, args, usedPrefix, command }) => {
     const userId = m.sender;
@@ -21,7 +23,8 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
         return m.reply(`> *𝚈𝚃𝙼𝙿𝟺 𝙰𝙳𝚅𝙰𝙽𝙲𝙴𝙳*\n> Uso: ${usedPrefix + command} <url> <calidad>\n> Ejemplo: ${usedPrefix + command} https://youtu.be/... 720`);
     }
 
-    if (activeVideoDownloads.has(userId)) {
+    // 👇 MODIFICADO: Usar sistema global en lugar de local
+    if (descargas.tieneDescargasActivas(userId)) {
         await m.react('⏳');
         return m.reply(`> *¡Espera!* Ya tengo un proceso tuyo en marcha.`);
     }
@@ -37,12 +40,13 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
     await m.react('⏳');
 
     try {
-        activeVideoDownloads.set(userId, true);
-        
+        // 👇 AGREGADO: Registrar descarga global
+        descargas.registrarDescarga(userId, 'ytmp4-adv');
+
         // 1. Obtener metadatos para validar duración
         const apiInfo = `https://api.ananta.qzz.io/api/yt-dl?url=${encodeURIComponent(url)}&format=${quality}`;
         const headers = { "x-api-key": "antebryxivz14" };
-        
+
         const response = await axios.get(apiInfo, { headers, timeout: 60000 });
         if (!response.data || !response.data.success) throw new Error('API_ERROR');
 
@@ -52,7 +56,8 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
         // 2. Validación de Calidad vs Duración
         // Videos > 30 min solo permiten 360p o menos
         if (durationMin > 30 && parseInt(quality) > 360) {
-            activeVideoDownloads.delete(userId);
+            // 👇 MODIFICADO: Usar sistema global
+            descargas.finalizarDescarga(userId);
             return m.reply(`> *Restricción de Calidad*\n> Los videos mayores a 30 minutos solo se permiten en *360p* o inferior para asegurar el envío.`);
         }
 
@@ -125,7 +130,8 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
         if (e.message === 'TOO_LARGE') errMsg = `> El video excede los 650MB permitidos.`;
         m.reply(errMsg);
     } finally {
-        activeVideoDownloads.delete(userId);
+        // 👇 MODIFICADO: Usar sistema global en lugar de local
+        descargas.finalizarDescarga(userId);
         if (fs.existsSync(tempRaw)) try { fs.unlinkSync(tempRaw); } catch {}
         if (fs.existsSync(tempFixed)) try { fs.unlinkSync(tempFixed); } catch {}
     }

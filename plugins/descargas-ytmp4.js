@@ -4,10 +4,12 @@ const ffmpegPath = require('ffmpeg-static');
 const fs = require('fs');
 const path = require('path');
 const { checkReg } = require('../lib/checkReg.js');
+// 👇 AGREGADO: Importar sistema global de descargas
+const descargas = require('./descargas-activas.js');
 
 ffmpeg.setFfmpegPath(ffmpegPath);
 
-const activeVideoDownloads = new Map();
+// 👇 ELIMINADO: const activeVideoDownloads = new Map(); (ahora es global)
 
 let handler = async (m, { conn, args, usedPrefix, command }) => {
     const userId = m.sender;
@@ -20,7 +22,8 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
         return m.reply(`> *𝚈𝚃𝙼𝙿𝟺 𝙳𝙾𝚆𝙽𝙻𝙾𝙰𝙳𝙴𝚁*\n> Ingresa un enlace de YouTube para descargar el video.`);
     }
 
-    if (activeVideoDownloads.has(userId)) {
+    // 👇 MODIFICADO: Usar sistema global en lugar de local
+    if (descargas.tieneDescargasActivas(userId)) {
         await m.react('⏳');
         return m.reply(`> *¡Espera!* Ya tengo un proceso tuyo en marcha. Ten paciencia.`);
     }
@@ -34,10 +37,12 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
     await m.react('⏳');
 
     try {
-        activeVideoDownloads.set(userId, true);
+        // 👇 AGREGADO: Registrar descarga global
+        descargas.registrarDescarga(userId, 'mp4');
+
         const url = args[0];
         const api = `https://api-aswin-sparky.koyeb.app/api/downloader/ytv?url=${encodeURIComponent(url)}`;
-        
+
         const response = await axios.get(api, { timeout: 60000 });
         if (!response.data || response.data.status !== true) throw new Error('API_ERROR');
 
@@ -59,7 +64,8 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
         // Límite de seguridad de 650MB
         const totalSize = parseInt(videoRes.headers['content-length'], 10);
         if (totalSize > 650 * 1024 * 1024) {
-            activeVideoDownloads.delete(userId);
+            // 👇 MODIFICADO: Usar sistema global
+            descargas.finalizarDescarga(userId);
             return m.reply(`> *Error:* El video supera el límite de 650MB.`);
         }
 
@@ -122,7 +128,8 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
         await m.react('❌');
         m.reply(`> Error al procesar el video. Intenta con otro enlace.`);
     } finally {
-        activeVideoDownloads.delete(userId);
+        // 👇 MODIFICADO: Usar sistema global en lugar de local
+        descargas.finalizarDescarga(userId);
         if (fs.existsSync(tempRaw)) try { fs.unlinkSync(tempRaw); } catch {}
         if (fs.existsSync(tempFixed)) try { fs.unlinkSync(tempFixed); } catch {}
     }

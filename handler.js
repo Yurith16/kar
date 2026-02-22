@@ -105,6 +105,19 @@ async function handler(chatUpdate) {
     m = smsg(this, m) || m
     if (!m) return
     m.exp = 0
+
+    // --- LÓGICA PARA BOTONES INTERACTIVOS ---
+    const body = (
+        m.mtype === 'interactiveResponseMessage' ? JSON.parse(m.message.interactiveResponseMessage.nativeFlowResponseMessage.paramsJson).id :
+        m.mtype === 'templateButtonReplyMessage' ? m.message.templateButtonReplyMessage.selectedId :
+        m.mtype === 'buttonsResponseMessage' ? m.message.buttonsResponseMessage.selectedButtonId :
+        ''
+    )
+    if (body) {
+        m.text = body
+    }
+    // ----------------------------------------
+    
     try {
       let user = global.db.data.users[m.sender]
       if (typeof user !== "object") global.db.data.users[m.sender] = {}
