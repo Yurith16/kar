@@ -1,5 +1,5 @@
-// keepalive.js - Versión ES Modules
-import express from 'express';
+// keepalive.js
+const express = require('express');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
