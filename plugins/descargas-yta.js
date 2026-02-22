@@ -12,12 +12,16 @@ const ytdlScraper = async (videoUrl) => {
     return response.data.result;
 };
 
-let handler = async (m, { conn, text }) => {
+let handler = async (m, { conn, text, args }) => {
     const userId = m.sender;
     const user = global.db.data.users[userId];
     if (await checkReg(m, user)) return;
 
-    if (!text) return; // No necesita reply porque viene del botón
+    if (!text) return;
+
+    // args[0] es la URL, args[1] sería 'doc' si viene de ese botón
+    const url = args[0];
+    const isDoc = args[1] === 'doc';
 
     if (activeAudioDownloads.has(userId)) {
         await m.react('⏳');
@@ -32,7 +36,7 @@ let handler = async (m, { conn, text }) => {
         activeAudioDownloads.set(userId, true);
         await m.react('📥');
 
-        const result = await ytdlScraper(text);
+        const result = await ytdlScraper(url);
         const response = await axios({ 
             url: result.download_url, 
             method: 'GET', 
@@ -50,11 +54,19 @@ let handler = async (m, { conn, text }) => {
 
         const safeTitle = result.title.substring(0, 50).replace(/[<>:"/\\|?*]/g, '');
 
-        await conn.sendMessage(m.chat, {
-            document: fs.readFileSync(tempAudio),
-            mimetype: 'audio/mpeg',
-            fileName: `${safeTitle}.mp3`
-        }, { quoted: m });
+        if (isDoc) {
+            await conn.sendMessage(m.chat, {
+                document: fs.readFileSync(tempAudio),
+                mimetype: 'audio/mpeg',
+                fileName: `${safeTitle}.mp3`
+            }, { quoted: m });
+        } else {
+            await conn.sendMessage(m.chat, {
+                audio: fs.readFileSync(tempAudio),
+                mimetype: 'audio/mpeg',
+                ptt: false
+            }, { quoted: m });
+        }
 
         await m.react('✅');
 

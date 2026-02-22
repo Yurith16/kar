@@ -65,7 +65,14 @@ let handler = async (m, { conn, text, usedPrefix }) => {
                     {
                         name: "quick_reply",
                         buttonParamsJson: JSON.stringify({
-                            display_text: `🎥 Video`,
+                            display_text: `📂 Audio Doc`,
+                            id: `${usedPrefix}getaud ${url} doc`,
+                        }),
+                    },
+                    {
+                        name: "quick_reply",
+                        buttonParamsJson: JSON.stringify({
+                            display_text: `🎥 Video Doc`,
                             id: `${usedPrefix}getvid ${url}`,
                         }),
                     },
