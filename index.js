@@ -93,9 +93,9 @@ async function initializeBot() {
   } catch (e) { 
     console.log('[DB] Error:', e.message) 
   }
-  
+
   await loadPlugins()
-  
+
   try { 
     const handlerModule = require('./handler.js')
     handler = handlerModule.handler
@@ -111,7 +111,7 @@ initializeBot().catch(console.error)
 try {
   const { say } = cfonts
   const botDisplayName = 'KarBot'
-  
+
   // Mensaje en consola con chalk
   console.log(chalk.greenBright(`\n🌱 Iniciando ${botDisplayName}...`))
 
@@ -215,22 +215,22 @@ async function startBot() {
         console.log(chalk.yellow('[Bot] Bot no listo, ignorando mensajes'))
         return
       }
-      
+
       const msgs = Array.isArray(chatUpdate?.messages) ? chatUpdate.messages : []
       if (!msgs.length) return
-      
+
       for (const m of msgs) {
         const text = m.message?.conversation || m.message?.extendedTextMessage?.text || ''
         if (text.trim()) {
           console.log(chalk.cyan(`[MSG] ${m.key.remoteJid}: ${text.substring(0, 30)}`))
         }
       }
-      
+
       const filteredMsgs = msgs.filter(m => !(m.key?.fromMe || false))
       if (!filteredMsgs.length) return
-      
+
       await handler?.call(sock, { ...chatUpdate, messages: filteredMsgs })
-      
+
     } catch (e) { 
       console.error('[HandlerError]', e?.message || e) 
     }
@@ -251,12 +251,12 @@ async function startBot() {
   async function maybeStartPairingFlow() {
     if (method !== 'code' || sock.authState.creds.registered || pairingRequested) return
     pairingRequested = true
-    
+
     let number = ''
     if (config.botNumber) {
       number = config.botNumber.toString().replace(/[^0-9]/g,'')
     }
-    
+
     if (!number) {
       console.log(chalk.yellow('Ingresa número (ej: +50412345678):'))
       const raw = await ask('Número: ')
@@ -264,13 +264,13 @@ async function startBot() {
       if (!cleaned.startsWith('+')) cleaned = '+' + cleaned
       number = cleaned.replace(/[^0-9]/g,'')
     }
-    
+
     if (!number) {
       console.log(chalk.red('Número no válido'))
       pairingRequested = false
       return
     }
-    
+
     const launchCodeGeneration = async () => {
       if (pairingCodeGenerated || sock.authState.creds.registered) return
       pairingCodeGenerated = true
@@ -286,7 +286,7 @@ async function startBot() {
         pairingCodeGenerated = false
       }
     }
-    
+
     if (sock?.ws?.readyState === 1) launchCodeGeneration()
     else setTimeout(() => { if (!pairingCodeGenerated) launchCodeGeneration() }, 6000)
   }
@@ -300,11 +300,11 @@ async function startBot() {
       console.log(chalk.cyan('Escanear QR:'))
       qrcode.generate(qr, { small: true })
     }
-    
+
     if (method === 'code' && !sock.authState.creds.registered && !pairingRequested) {
       setTimeout(maybeStartPairingFlow, 800)
     }
-    
+
     if (connection === 'close') {
       const statusCode = lastDisconnect?.error?.output?.statusCode
       if (statusCode !== DisconnectReason.loggedOut) {
@@ -314,25 +314,25 @@ async function startBot() {
         console.log('[Sesión cerrada]')
       }
     } 
-    
+
     else if (connection === 'open') {
       try {
         await new Promise(resolve => setTimeout(resolve, 2000))
-        
+
         sock.__sessionOpenAt = Date.now()
         await sock.sendPresenceUpdate('available')
-        
+
         const userName = sock?.user?.name || sock?.user?.verifiedName || 'Desconocido'
         console.log(chalk.green.bold(`✅ Conectado: ${userName}`))
-        
+
         const restartMessage = `✅ *BOT REINICIADO*\nConectado: ${userName}\nPlugins: ${Object.keys(global.plugins).length}`
         setTimeout(() => sendOwnerNotification(sock, restartMessage), 3000)
-        
+
         setTimeout(() => {
           sock.__botReady = true
           console.log(chalk.green('[Bot] ✅ Listo para comandos'))
         }, 3000)
-        
+
       } catch (e) {
         console.log(chalk.red('[Open] Error:', e.message))
       }

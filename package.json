@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@napi-rs/canvas": "^0.1.53",
-    "@whiskeysockets/baileys": "npm:dgxeon-soket@^7.0.3",
+    "@whiskeysockets/baileys": "github:DGXeon13/dgxeon-soket",
     "acrcloud": "^1.4.0",
     "aptoide-scraper": "github:DIEGO-OFC/dv-aptoide-scraper",
     "awesome-phonenumber": "^5.5.1",
