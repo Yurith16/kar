@@ -1,76 +1,91 @@
-const fsp = require('fs/promises')
-const path = require('path')
-const { fileURLToPath } = require('url')
-const { execSync } = require('child_process')
+const fsp = require('fs/promises');
+const fs = require('fs');
+const path = require('path');
+const archiver = require('archiver');
 
-// En CommonJS, __dirname ya está disponible
-const ROOT = path.resolve(__dirname, '..')
-const TEMP = path.join(ROOT, 'temp')
-const DATABASE_PATH = path.join(ROOT, 'database.json')
+const ROOT = path.resolve(__dirname, '..');
+const TEMP = path.join(ROOT, 'temp');
+const DATABASE_PATH = path.join(ROOT, 'database.json');
 
 function stamp() {
-  const d = new Date()
-  const p = n => String(n).padStart(2, '0')
-  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`
+    const d = new Date();
+    const p = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
 }
 
-let handler = async (m, { conn, usedPrefix }) => {
-  const k_line = "━━━━━━━━━━━━━━━━━━━━━━"
-  const k_tag = "『 🗄️ DATABASE SYSTEM 』"
-  
-  // Verificar si la base de datos existe
-  if (!await fsp.access(DATABASE_PATH).then(() => true).catch(() => false)) {
-    return conn.reply(m.chat, `${k_tag}\n\n❌ *ERROR:* No se encontró el archivo database.json en la raíz.`, m)
-  }
+// Crear zip usando archiver (sin dependencias del sistema)
+const createZip = (inputPath, outputPath) => {
+    return new Promise((resolve, reject) => {
+        const output = fs.createWriteStream(outputPath);
+        const archive = archiver('zip', { zlib: { level: 9 } });
 
-  await m.react('🗄️')
-  await fsp.mkdir(TEMP, { recursive: true }).catch(() => {})
+        output.on('close', () => resolve());
+        archive.on('error', (err) => reject(err));
+        archive.on('warning', (err) => {
+            if (err.code === 'ENOENT') console.warn('Warning:', err);
+            else reject(err);
+        });
 
-  const zipName = `db-${stamp()}.zip`
-  const zipPath = path.join(TEMP, zipName)
+        archive.pipe(output);
+        archive.file(inputPath, { name: path.basename(inputPath) });
+        archive.finalize();
+    });
+};
 
-  try {
-    let { key } = await conn.reply(m.chat, `${k_tag}\n${k_line}\n\n⏳ *PROCESANDO:* Preparando base de datos...\n\n${k_line}`, m)
+let handler = async (m, { conn }) => {
+    // Verificar si la base de datos existe
+    try {
+        await fsp.access(DATABASE_PATH);
+    } catch {
+        return m.reply(`> 🗄️ *No se encontró la base de datos.*`);
+    }
 
-    // Comprimir solo el archivo database.json
-    await conn.sendMessage(m.chat, { text: `${k_tag}\n${k_line}\n\n🗜️ *COMPRIMIENDO:* Cifrando información...\n\n${k_line}`, edit: key })
-    
-    // Comando zip directo (funciona perfecto en UserLAnd/Linux)
-    execSync(`zip -j "${zipPath}" "${DATABASE_PATH}"`, { stdio: 'ignore' })
+    await m.react('🗄️');
+    await fsp.mkdir(TEMP, { recursive: true }).catch(() => {});
 
-    const stat = await fsp.stat(zipPath)
-    const sizeKB = (stat.size / 1024).toFixed(2)
+    const zipName = `db-${stamp()}.zip`;
+    const zipPath = path.join(TEMP, zipName);
 
-    await conn.sendMessage(m.chat, { text: `${k_tag}\n${k_line}\n\n📤 *ENVIANDO:* Subiendo archivo (${sizeKB} KB)...\n\n${k_line}`, edit: key })
-    
-    const buffer = await fsp.readFile(zipPath)
-    
-    await conn.sendMessage(
-      m.chat,
-      { 
-        document: buffer, 
-        mimetype: 'application/zip', 
-        fileName: zipName,
-        caption: `✅ *BASE DE DATOS LISTA*\n\n📅 *Fecha:* ${new Date().toLocaleString()}\n🗂️ *Archivo:* ${zipName}\n⚖️ *Peso:* ${sizeKB} KB\n\n⚠️ _Conserva este archivo en un lugar seguro._`
-      },
-      { quoted: m }
-    )
+    try {
+        // Crear zip con archiver
+        await createZip(DATABASE_PATH, zipPath);
 
-    await m.react('✅')
+        const stat = await fsp.stat(zipPath);
+        const sizeKB = (stat.size / 1024).toFixed(2);
+        const buffer = await fsp.readFile(zipPath);
 
-  } catch (e) {
-    console.error(e)
-    await m.react('❌')
-    await conn.reply(m.chat, `${k_tag}\n\n❌ *ERROR CRÍTICO*\nNo se pudo procesar la base de datos.`, m)
-  } finally {
-    // Limpieza de archivos temporales
-    try { await fsp.rm(zipPath, { force: true }) } catch {}
-  }
-}
+        // Enviar con diseño impecable
+        await conn.sendMessage(m.chat, {
+            document: buffer,
+            mimetype: 'application/zip',
+            fileName: zipName,
+            caption: `> 🗄️ *Base de datos respaldada.*`,
+            contextInfo: {
+                externalAdReply: {
+                    title: `𝙳𝙰𝚃𝙰𝙱𝙰𝚂𝙴 𝙱𝙰𝙲𝙺𝚄𝙿`,
+                    body: `${zipName} (${sizeKB} KB)`,
+                    thumbnailUrl: global.icono || 'https://i.imgur.com/8fK4h6A.png',
+                    sourceUrl: '',
+                    mediaType: 1,
+                    renderLargerThumbnail: false
+                }
+            }
+        }, { quoted: m });
 
-handler.help = ['database']
-handler.tags = ['owner']
-handler.command = ['database', 'db', 'dbbot', 'basedatos']
-handler.rowner = true
+        await m.react('✅');
 
-module.exports = handler
+    } catch (e) {
+        console.error(e);
+        await m.react('❌');
+        await m.reply(`> 🗄️ *Error al procesar la base de datos.*`);
+    } finally {
+        try { await fsp.rm(zipPath, { force: true }); } catch {}
+    }
+};
+
+handler.help = ['database'];
+handler.tags = ['owner'];
+handler.command = ['database', 'db', 'dbbot', 'basedatos'];
+handler.rowner = true;
+
+module.exports = handler;

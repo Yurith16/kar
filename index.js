@@ -184,6 +184,37 @@ async function sendOwnerNotification(sock, message) {
   }
 }
 
+// Limpieza de carpetas temporales cada 10 minutos
+const cleanTempFolders = () => {
+  const folders = ['tmp', 'temp']
+  let deleted = 0
+
+  folders.forEach(folder => {
+    const folderPath = path.join(process.cwd(), folder)
+    if (!fs.existsSync(folderPath)) return
+
+    try {
+      const files = fs.readdirSync(folderPath)
+      files.forEach(file => {
+        try {
+          const filePath = path.join(folderPath, file)
+          const stats = fs.statSync(filePath)
+          // Borrar archivos con más de 10 minutos de antigüedad
+          if (Date.now() - stats.mtime.getTime() > 600000) {
+            fs.unlinkSync(filePath)
+            deleted++
+          }
+        } catch {}
+      })
+    } catch {}
+  })
+
+  if (deleted > 0) console.log(chalk.gray(`[Cleaner] ${deleted} archivos temporales eliminados`))
+}
+
+// Iniciar limpieza cada 10 minutos
+setInterval(cleanTempFolders, 600000)
+
 async function startBot() {
   // Esperar a que handler esté disponible
   while (!handler) {

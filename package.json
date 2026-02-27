@@ -15,6 +15,7 @@
     "@whiskeysockets/baileys": "github:DGXeon13/dgxeon-soket",
     "acrcloud": "^1.4.0",
     "aptoide-scraper": "github:DIEGO-OFC/dv-aptoide-scraper",
+    "archiver": "^7.0.1",
     "awesome-phonenumber": "^5.5.1",
     "axios": "^1.13.5",
     "axios-cookiejar-support": "^5.0.3",

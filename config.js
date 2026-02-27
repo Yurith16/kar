@@ -25,7 +25,7 @@ global.retirado = [["50496926150", "𝙷𝙴𝚁𝙽𝙰𝙽𝙳𝙴𝚉", true]
 // Configuraciones principales
 global.roowner = ["50496926150"];
 global.owner = [["50496926150", "𝙷𝙴𝚁𝙽𝙰𝙽𝙳𝙴𝚉", true],
-  ['51913347603', 'Kar', true]];
+  ['5191334760', 'Kar', true]];
 
 global.mods = ["50496926150"];
 global.suittag = ["50496926150"];
@@ -50,8 +50,8 @@ global.packname = "";
 global.botname = "⚙️  𝙺𝙰𝚁𝙱𝙾𝚃 ⚙️";
 global.wm = "© 𝙷𝙴𝚁𝙽𝙰𝙽𝙳𝙴𝚉";
 global.wm3 = "⚙️  𝙺𝙰𝚁𝙱𝙾𝚃 ⚙️";
-global.author = "👑 𝙼𝙰𝙳𝙴 𝙱𝚈 𝙷𝙴𝚁𝙽𝙰𝙽𝙳𝙴𝚉 🧃";
-global.dev = "© 𝙾𝚆𝙽𝙴𝚁-𝙷𝙴𝚁𝙽𝙰𝙽𝙳𝙴𝚉 𝙳𝙴𝚅 👑";
+global.author = "𝙷𝙴𝚁𝙽𝙰𝙽𝙳𝙴𝚉";
+global.dev = "𝙾𝚆𝙽𝙴𝚁-𝙷𝙴𝚁𝙽𝙰𝙽𝙳𝙴𝚉";
 global.textbot = "𝙺𝙰𝚁𝙱𝙾𝚃-𝙸𝙰";
 global.etiqueta = "@𝙷𝙴𝚁𝙽𝙰𝙽𝙳𝙴𝚉";
 global.gt = "𝙺𝙰𝚁𝙱𝙾𝚃";
