@@ -9,7 +9,6 @@ const descargas = require('./descargas-activas.js');
 
 ffmpeg.setFfmpegPath(ffmpegPath);
 
-// APIs de video con fallback
 const apis = [
     {
         name: 'PrinceTech',
@@ -32,48 +31,66 @@ const apis = [
     }
 ];
 
-// Intentar APIs en orden hasta que una funcione
 const downloadVideo = async (videoUrl) => {
     for (const api of apis) {
         try {
-            console.log(`[play2] Intentando ${api.name}...`);
             const config = { timeout: 60000 };
             if (api.headers) config.headers = api.headers;
-
             const { data } = await axios.get(api.url(videoUrl), config);
             const result = api.process(data);
-
-            if (result?.download_url) {
-                console.log(`[play2] ${api.name} OK`);
-                return result;
-            }
+            if (result?.download_url) return result;
         } catch (e) {
-            console.log(`[play2] ${api.name} falló: ${e.message}`);
             continue;
         }
     }
-    throw new Error('Todas las APIs fallaron');
+    throw new Error('APIs fallaron');
+};
+
+const downloadWithRetry = async (url, outputPath, maxRetries = 2) => {
+    for (let i = 0; i < maxRetries; i++) {
+        try {
+            const response = await axios({ 
+                url: url, 
+                method: 'GET', 
+                responseType: 'stream', 
+                timeout: 300000 
+            });
+
+            const writer = fs.createWriteStream(outputPath);
+            response.data.pipe(writer);
+
+            await new Promise((resolve, reject) => {
+                writer.on('finish', resolve);
+                writer.on('error', reject);
+            });
+
+            const stats = fs.statSync(outputPath);
+            if (stats.size === 0) throw new Error('Vacío');
+
+            const isValid = await new Promise((resolve) => {
+                ffmpeg.ffprobe(outputPath, (err) => resolve(!err));
+            });
+
+            if (isValid) return stats.size;
+            throw new Error('Corrupto');
+
+        } catch (e) {
+            if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
+            if (i === maxRetries - 1) throw e;
+            await new Promise(r => setTimeout(r, 2000));
+        }
+    }
 };
 
 let handler = async (m, { conn, text }) => {
     const userId = m.sender;
     const user = global.db.data.users[userId];
-
     if (await checkReg(m, user)) return;
-
-    if (!text) {
-        await m.react('🤔');
-        return m.reply(`> 🎬 *¿Qué video deseas ver hoy, cielo?*`);
-    }
-
-    if (descargas.tieneDescargasActivas(userId)) {
-        await m.react('⏳');
-        return m.reply(`> 🎬 *¡Paciencia, corazón!* Ya estoy procesando tu video.`);
-    }
+    if (!text) return m.reply(`> 🎬 *¿Qué video deseas ver, cielo?*`);
+    if (descargas.tieneDescargasActivas(userId)) return m.reply(`> 🎬 *Espera, ya proceso uno.*`);
 
     const tmpDir = path.join(process.cwd(), 'tmp');
     if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir);
-
     const tempRaw = path.join(tmpDir, `raw_${Date.now()}`);
     const tempFixed = path.join(tmpDir, `vid_${Date.now()}.mp4`);
 
@@ -81,126 +98,92 @@ let handler = async (m, { conn, text }) => {
         descargas.registrarDescarga(userId, 'play2');
         await m.react('🔍');
 
-        let videoUrl = text;
-        let videoInfo;
-
+        let videoUrl = text, videoInfo;
         if (!text.includes('youtu.be') && !text.includes('youtube.com')) {
             const search = await yts(text);
-            if (!search.videos.length) {
-                descargas.finalizarDescarga(userId);
-                await m.react('💨');
-                return m.reply(`> 🎬 *No encontré nada, corazón.*`);
-            }
+            if (!search.videos.length) throw new Error('No encontrado');
             videoInfo = search.videos[0];
             videoUrl = videoInfo.url;
         } else {
             const videoId = videoUrl.split('v=')[1]?.split('&')[0] || 
-                            videoUrl.split('youtu.be/')[1]?.split('?')[0] ||
-                            videoUrl.split('/').pop().split('?')[0];
-
-            if (!videoId) {
-                descargas.finalizarDescarga(userId);
-                await m.react('💨');
-                return m.reply(`> 🎬 *Enlace inválido, corazón.*`);
-            }
+                            videoUrl.split('youtu.be/')[1]?.split('?')[0];
+            if (!videoId) throw new Error('URL inválida');
             videoInfo = await yts({ videoId });
         }
 
-        const { title, author, duration, views, ago, thumbnail, url } = videoInfo;
+        const { title, duration, thumbnail, url } = videoInfo;
+        if (duration.seconds > 1800) throw new Error('Muy largo');
 
-        // Restricción 30 minutos
-        if (duration.seconds > 1800) {
-            descargas.finalizarDescarga(userId);
-            await m.react('❌');
-            return m.reply(`> 🎬 *El video excede los 30 minutos permitidos, corazón.*`);
-        }
+        const statusMsg = await conn.sendMessage(m.chat, {
+            text: `> ⏳ *Verificando contenido...*`
+        }, { quoted: m });
 
         await m.react('📥');
 
-        // Descargar con fallback de APIs
         const result = await downloadVideo(videoUrl);
 
-        // Descargar video con verificación
-        const response = await axios({ 
-            url: result.download_url, 
-            method: 'GET', 
-            responseType: 'stream', 
-            timeout: 300000 
+        await conn.sendMessage(m.chat, {
+            text: `> 📥 *Descargando...*`,
+            edit: statusMsg.key
         });
 
-        const writer = fs.createWriteStream(tempRaw);
-        response.data.pipe(writer);
+        const rawSize = await downloadWithRetry(result.download_url, tempRaw);
 
-        await new Promise((resolve, reject) => {
-            writer.on('finish', resolve);
-            writer.on('error', reject);
+        await conn.sendMessage(m.chat, {
+            text: `> ⚙️ *Convirtiendo...* 0%`,
+            edit: statusMsg.key
         });
 
-        // Verificar que se descargó correctamente
-        const rawStats = fs.statSync(tempRaw);
-        if (rawStats.size === 0) {
-            throw new Error('Descarga vacía');
-        }
-        console.log(`[play2] Descargado: ${(rawStats.size / 1024 / 1024).toFixed(2)} MB`);
-
-        await m.react('⚙️');
-
-        // FFmpeg ULTRARÁPIDO
+        let lastPercent = 0;
         await new Promise((resolve, reject) => {
             ffmpeg(tempRaw)
                 .videoCodec('libx264')
                 .audioCodec('aac')
-                .videoBitrate('1000k')
-                .audioBitrate('128k')
-                .size('640x?')
-                .fps(30)
+                .size('360x?')
                 .outputOptions([
                     '-preset ultrafast',
-                    '-tune fastdecode',
                     '-movflags +faststart',
                     '-threads 0',
-                    '-crf 28',
-                    '-pix_fmt yuv420p',
-                    '-level 3.1'
+                    '-pix_fmt yuv420p'
                 ])
-                .on('start', (cmd) => console.log('[FFmpeg] Iniciando:', cmd))
-                .on('progress', (progress) => {
-                    if (progress.percent) {
-                        console.log(`[FFmpeg] Progreso: ${Math.round(progress.percent)}%`);
+                .on('progress', (p) => {
+                    const current = Math.floor(p.percent / 10) * 10;
+                    if (current > lastPercent && current <= 100) {
+                        lastPercent = current;
+                        console.log(`[FFmpeg] ${current}%`);
+                        conn.sendMessage(m.chat, {
+                            text: `> ⚙️ *Convirtiendo...* ${current}%`,
+                            edit: statusMsg.key
+                        }).catch(() => {});
                     }
                 })
                 .on('end', () => {
-                    console.log('[FFmpeg] Conversión completada');
+                    conn.sendMessage(m.chat, {
+                        text: `> ✅ *Conversión completada*`,
+                        edit: statusMsg.key
+                    }).catch(() => {});
                     resolve();
                 })
-                .on('error', (err) => {
-                    console.error('[FFmpeg] Error:', err.message);
-                    reject(err);
-                })
+                .on('error', reject)
                 .save(tempFixed);
         });
 
-        await m.react('📦');
+        if (!fs.existsSync(tempFixed) || fs.statSync(tempFixed).size === 0) throw new Error('Error');
 
-        // Verificar archivo final
-        if (!fs.existsSync(tempFixed) || fs.statSync(tempFixed).size === 0) {
-            throw new Error('Error en conversión de video');
-        }
+        const buffer = fs.readFileSync(tempFixed);
+        const sizeMB = (buffer.length / 1024 / 1024).toFixed(1);
 
-        const videoBuffer = fs.readFileSync(tempFixed);
-        const safeTitle = (result.title || title).substring(0, 50).replace(/[<>:"/\\|?*]/g, '');
-        const sizeMB = (videoBuffer.length / (1024 * 1024)).toFixed(2);
+        // NO eliminar mensaje de estado, se queda en el chat
 
-        // Enviar como documento SIEMPRE
         await conn.sendMessage(m.chat, {
-            document: videoBuffer,
+            document: buffer,
             mimetype: 'video/mp4',
-            fileName: `${safeTitle}.mp4`,
+            fileName: `${title.substring(0,50).replace(/[<>:"/\\|?*]/g,'')}.mp4`,
             caption: url,
             contextInfo: {
                 externalAdReply: {
                     title: `𝚈𝚘𝚞𝚃𝚞𝚋𝚎 𝙳𝚘𝚠𝚗𝚕𝚘𝚊𝚍`,
-                    body: `${title} (${sizeMB} MB)`,
+                    body: `${title} • ${sizeMB} MB`,
                     thumbnailUrl: thumbnail,
                     sourceUrl: url,
                     mediaType: 1,
@@ -211,15 +194,13 @@ let handler = async (m, { conn, text }) => {
 
         await m.react('✅');
 
-    } catch (error) {
-        console.error('[play2 Error]:', error.message);
+    } catch (e) {
+        console.error('[play2]', e.message);
         await m.react('❌');
-        await m.reply(`> 🎬 *No pude procesar el video, corazón.*`);
+        m.reply(`> 🎬 *Error: ${e.message || 'No pude procesarlo'}*`);
     } finally {
         descargas.finalizarDescarga(userId);
-        [tempRaw, tempFixed].forEach(f => {
-            if (fs.existsSync(f)) fs.unlinkSync(f);
-        });
+        [tempRaw, tempFixed].forEach(f => fs.existsSync(f) && fs.unlinkSync(f));
     }
 };
 
@@ -227,5 +208,4 @@ handler.tags = ['downloader'];
 handler.help = ['play2'];
 handler.command = ['play2', 'video'];
 handler.group = true;
-
 module.exports = handler;

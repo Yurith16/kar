@@ -1,47 +1,54 @@
-const { checkReg } = require('../lib/checkReg.js')
+const { checkReg } = require('../lib/checkReg.js');
+const karimg = require('./main-karimg.js');
 
 let handler = async (m, { conn }) => {
-  const userId = m.sender
-  const user = global.db.data.users[userId]
-  
-  if (await checkReg(m, user)) return
-  
-  try {
-    await m.react('⚙️')
+    const userId = m.sender;
+    const user = global.db.data.users[userId];
 
-    // Ping fijo (porque medirlo realmente da problemas)
-    const ping = 150 // ms
-    
-    // Speed basado en ping fijo
-    let speed = '⚡ Rápido'
+    if (await checkReg(m, user)) return;
 
-    // Uptime real
-    const uptime = process.uptime()
-    const horas = Math.floor(uptime / 3600)
-    const minutos = Math.floor((uptime % 3600) / 60)
-    const segundos = Math.floor(uptime % 60)
-    
-    let tiempoActivo = ''
-    if (horas > 0) tiempoActivo += `${horas}h `
-    if (minutos > 0) tiempoActivo += `${minutos}m `
-    tiempoActivo += `${segundos}s`
+    try {
+        await m.react('⚙️');
 
-    // Enviar mensaje
-    await conn.reply(m.chat, 
-      `> ⚡ Ping: ${ping} ms\n` +
-      `> 📊 Speed: ${speed}\n` +
-      `> ⏰ Activo: ${tiempoActivo}`, 
-      m
-    )
-    
-    await m.react('✅')
+        // Ping fijo
+        const ping = 150;
+        let speed = '⚡ Rápido';
 
-  } catch (error) {
-    await m.react('❌')
-    await conn.reply(m.chat, '> Error', m)
-  }
-}
+        // Uptime real
+        const uptime = process.uptime();
+        const horas = Math.floor(uptime / 3600);
+        const minutos = Math.floor((uptime % 3600) / 60);
+        const segundos = Math.floor(uptime % 60);
 
-handler.command = ['ping', 'p', 'latencia']
-handler.tags = ['main']
-module.exports = handler
+        let tiempoActivo = '';
+        if (horas > 0) tiempoActivo += `${horas}h `;
+        if (minutos > 0) tiempoActivo += `${minutos}m `;
+        tiempoActivo += `${segundos}s`;
+
+        // Enviar mensaje vacío con externalAdReply (solo se ve la imagen)
+        await conn.sendMessage(m.chat, {
+            text: '‎', // Carácter invisible (zero-width space)
+            contextInfo: {
+                externalAdReply: {
+                    title: `𝚂𝚈𝚂𝚃𝙴𝙼 𝚂𝚃𝙰𝚃𝚄𝚂`,
+                    body: `Ping: ${ping}ms • Speed: ${speed} • Activo: ${tiempoActivo}`,
+                    thumbnailUrl: karimg.url,
+                    sourceUrl: '',
+                    mediaType: 1,
+                    renderLargerThumbnail: true
+                }
+            }
+        }, { quoted: m });
+
+        await m.react('✅');
+
+    } catch (error) {
+        await m.react('❌');
+        m.reply(`> ⚙️ *Error al obtener estadísticas.*`);
+    }
+};
+
+handler.command = ['ping', 'p', 'latencia'];
+handler.tags = ['main'];
+handler.group = true;
+module.exports = handler;
