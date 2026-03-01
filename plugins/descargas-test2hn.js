@@ -240,8 +240,8 @@ let handler = async (m, { conn, text }) => {
 };
 
 handler.tags = ['downloader'];
-handler.help = ['play2', 'video'];
-handler.command = ['play2', 'video'];
+handler.help = ['play2', 'ytmp4'];
+handler.command = ['play2', 'ytmp4'];
 handler.group = true;
 
 module.exports = handler;
