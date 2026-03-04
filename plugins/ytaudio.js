@@ -7,7 +7,10 @@ const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 const APIs = require('../utils/api');
-const { toAudio } = require('../utils/converter');
+const { checkReg } = require('../lib/checkReg.js');
+
+const activeDownloads = new Map();
+const lastUsage = new Map();
 
 const AXIOS_DEFAULTS = {
   timeout: 60000,
@@ -18,241 +21,218 @@ const AXIOS_DEFAULTS = {
 };
 
 let handler = async (m, { conn, text, args }) => {
+    const userId = m.sender;
+    const user = global.db.data.users[userId];
+
+    // Sistema de registro
+    if (await checkReg(m, user)) return;
+
+    // Rate limiting: 5 segundos entre comandos
+    const now = Date.now();
+    const lastUse = lastUsage.get(userId) || 0;
+    if (now - lastUse < 5000) {
+        const wait = Math.ceil((5000 - (now - lastUse)) / 1000);
+        return m.reply(`> ⏳ *Espera ${wait}s antes de usar el comando de nuevo.*`);
+    }
+    lastUsage.set(userId, now);
+
+    if (activeDownloads.has(userId)) {
+        return m.reply(`> ⏳ *Espera, ya proceso uno.*`);
+    }
+
+    const searchQuery = text || args.join(' ');
+
+    if (!searchQuery || !searchQuery.trim()) {
+        return m.reply(`> 🎵 *¿Qué canción deseas descargar?*`);
+    }
+
+    let video;
+
     try {
-      const searchQuery = text || args.join(' ');
+        activeDownloads.set(userId, true);
+        await m.react('🔍');
 
-      if (!searchQuery) {
-        return await conn.sendMessage(m.chat, { 
-          text: 'Uso: .song <nombre de canción o link de YouTube>' 
+        if (searchQuery.includes('youtube.com') || searchQuery.includes('youtu.be')) {
+            video = { url: searchQuery };
+            // Obtener info adicional
+            const videoId = (searchQuery.match(/(?:youtu\.be\/|v=)([a-zA-Z0-9_-]{11})/) || [])[1];
+            if (videoId) {
+                const info = await yts({ videoId });
+                video.title = info.title;
+                video.thumbnail = info.thumbnail;
+                video.timestamp = info.timestamp;
+                video.duration = info.duration;
+            }
+        } else {
+            const search = await yts(searchQuery);
+            if (!search || !search.videos.length) throw new Error('No encontrado');
+            video = search.videos[0];
+        }
+
+        // Validar duración (máximo 2 horas)
+        if (video.duration && video.duration.seconds > 7200) {
+            throw new Error('Muy largo');
+        }
+
+        const statusMsg = await conn.sendMessage(m.chat, {
+            text: `> ⏳ *Procesando...*`
         }, { quoted: m });
-      }
 
-      let video;
+        await m.react('📥');
 
-      if (searchQuery.includes('youtube.com') || searchQuery.includes('youtu.be')) {
-        video = { url: searchQuery };
-      } else {
-        const search = await yts(searchQuery);
-        if (!search || !search.videos.length) {
-          return await conn.sendMessage(m.chat, { 
-            text: 'No se encontraron resultados.' 
-          }, { quoted: m });
-        }
-        video = search.videos[0];
-      }
+        // Intentar múltiples APIs
+        let audioData;
+        let audioBuffer;
+        let downloadSuccess = false;
 
-      // Inform user
-      await conn.sendMessage(m.chat, {
-        image: { url: video.thumbnail },
-        caption: `🎵 Descargando: *${video.title}*\n⏱ Duración: ${video.timestamp}`
-      }, { quoted: m });
+        const apiMethods = [
+            { name: 'EliteProTech', method: () => APIs.getEliteProTechDownloadByUrl(video.url) },
+            { name: 'Yupra', method: () => APIs.getYupraDownloadByUrl(video.url) },
+            { name: 'Okatsu', method: () => APIs.getOkatsuDownloadByUrl(video.url) },
+            { name: 'Izumi', method: () => APIs.getIzumiDownloadByUrl(video.url) }
+        ];
 
-      // Try multiple APIs with fallback chain
-      let audioData;
-      let audioBuffer;
-      let downloadSuccess = false;
-
-      // List of API methods to try
-      const apiMethods = [
-        { name: 'EliteProTech', method: () => APIs.getEliteProTechDownloadByUrl(video.url) },
-        { name: 'Yupra', method: () => APIs.getYupraDownloadByUrl(video.url) },
-        { name: 'Okatsu', method: () => APIs.getOkatsuDownloadByUrl(video.url) },
-        { name: 'Izumi', method: () => APIs.getIzumiDownloadByUrl(video.url) }
-      ];
-
-      // Try each API until we successfully download audio
-      for (const apiMethod of apiMethods) {
-        try {
-          audioData = await apiMethod.method();
-          const audioUrl = audioData.download || audioData.dl || audioData.url;
-
-          if (!audioUrl) {
-            console.log(`${apiMethod.name} returned no download URL, trying next API...`);
-            continue;
-          }
-
-          // Try to download the audio file - arraybuffer first
-          try {
-            const audioResponse = await axios.get(audioUrl, {
-              responseType: 'arraybuffer',
-              timeout: 90000,
-              maxContentLength: Infinity,
-              maxBodyLength: Infinity,
-              decompress: true,
-              validateStatus: s => s >= 200 && s < 400,
-              headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': '*/*',
-                'Accept-Encoding': 'identity'
-              }
-            });
-            audioBuffer = Buffer.from(audioResponse.data);
-
-            if (audioBuffer && audioBuffer.length > 0) {
-              downloadSuccess = true;
-              break;
-            }
-          } catch (downloadErr) {
-            const statusCode = downloadErr.response?.status || downloadErr.status;
-            if (statusCode === 451) {
-              console.log(`Download blocked (451) from ${apiMethod.name}, trying next API...`);
-              continue;
-            }
-
-            // Try stream mode as fallback
+        for (const apiMethod of apiMethods) {
             try {
-              const audioResponse = await axios.get(audioUrl, {
-                responseType: 'stream',
-                timeout: 90000,
-                maxContentLength: Infinity,
-                maxBodyLength: Infinity,
-                validateStatus: s => s >= 200 && s < 400,
-                headers: {
-                  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                  'Accept': '*/*',
-                  'Accept-Encoding': 'identity'
-                }
-              });
-              const chunks = [];
-              await new Promise((resolve, reject) => {
-                audioResponse.data.on('data', c => chunks.push(c));
-                audioResponse.data.on('end', resolve);
-                audioResponse.data.on('error', reject);
-              });
-              audioBuffer = Buffer.concat(chunks);
+                audioData = await apiMethod.method();
+                const audioUrl = audioData.download || audioData.dl || audioData.url || audioData.ytdl;
 
-              if (audioBuffer && audioBuffer.length > 0) {
-                downloadSuccess = true;
-                break;
-              }
-            } catch (streamErr) {
-              const streamStatusCode = streamErr.response?.status || streamErr.status;
-              if (streamStatusCode === 451) {
-                console.log(`Stream download blocked (451) from ${apiMethod.name}, trying next API...`);
-              } else {
-                console.log(`Stream download failed from ${apiMethod.name}:`, streamErr.message);
-              }
-              continue;
+                if (!audioUrl) {
+                    console.log(`[song] ${apiMethod.name} sin URL de descarga`);
+                    continue;
+                }
+
+                // Descargar audio
+                try {
+                    const audioResponse = await axios.get(audioUrl, {
+                        responseType: 'arraybuffer',
+                        timeout: 90000,
+                        maxContentLength: 100 * 1024 * 1024,
+                        maxBodyLength: 100 * 1024 * 1024,
+                        headers: {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                            'Accept': '*/*'
+                        }
+                    });
+                    audioBuffer = Buffer.from(audioResponse.data);
+
+                    if (audioBuffer && audioBuffer.length > 0) {
+                        downloadSuccess = true;
+                        break;
+                    }
+                } catch (downloadErr) {
+                    console.log(`[song] Error descargando de ${apiMethod.name}:`, downloadErr.message);
+                    continue;
+                }
+            } catch (apiErr) {
+                console.log(`[song] ${apiMethod.name} API falló:`, apiErr.message);
+                continue;
             }
-          }
-        } catch (apiErr) {
-          console.log(`${apiMethod.name} API failed:`, apiErr.message);
-          continue;
         }
-      }
 
-      if (!downloadSuccess || !audioBuffer) {
-        throw new Error('All download sources failed. The content may be unavailable or blocked in your region.');
-      }
-
-      if (!audioBuffer || audioBuffer.length === 0) {
-        throw new Error('Downloaded audio buffer is empty');
-      }
-
-      // Detect actual file format from signature
-      const firstBytes = audioBuffer.slice(0, 12);
-      const hexSignature = firstBytes.toString('hex');
-      const asciiSignature = firstBytes.toString('ascii', 4, 8);
-
-      let actualMimetype = 'audio/mpeg';
-      let fileExtension = 'mp3';
-      let detectedFormat = 'unknown';
-
-      if (asciiSignature === 'ftyp' || hexSignature.startsWith('000000')) {
-        const ftypBox = audioBuffer.slice(4, 8).toString('ascii');
-        if (ftypBox === 'ftyp') {
-          detectedFormat = 'M4A/MP4';
-          actualMimetype = 'audio/mp4';
-          fileExtension = 'm4a';
+        if (!downloadSuccess || !audioBuffer) {
+            throw new Error('SIN_LINK_DESCARGA');
         }
-      }
-      else if (audioBuffer.toString('ascii', 0, 3) === 'ID3' || 
-               (audioBuffer[0] === 0xFF && (audioBuffer[1] & 0xE0) === 0xE0)) {
-        detectedFormat = 'MP3';
-        actualMimetype = 'audio/mpeg';
-        fileExtension = 'mp3';
-      }
-      else if (audioBuffer.toString('ascii', 0, 4) === 'OggS') {
-        detectedFormat = 'OGG/Opus';
-        actualMimetype = 'audio/ogg; codecs=opus';
-        fileExtension = 'ogg';
-      }
-      else if (audioBuffer.toString('ascii', 0, 4) === 'RIFF') {
-        detectedFormat = 'WAV';
-        actualMimetype = 'audio/wav';
-        fileExtension = 'wav';
-      }
-      else {
-        actualMimetype = 'audio/mp4';
-        fileExtension = 'm4a';
-        detectedFormat = 'Unknown (defaulting to M4A)';
-      }
 
-      // Convert to MP3 if not already MP3
-      let finalBuffer = audioBuffer;
-      let finalMimetype = 'audio/mpeg';
-      let finalExtension = 'mp3';
+        // Verificar formato y convertir si es necesario
+        let finalBuffer = audioBuffer;
+        const firstBytes = audioBuffer.slice(0, 12);
+        const hexSignature = firstBytes.toString('hex');
+        const asciiSignature = firstBytes.toString('ascii', 4, 8);
 
-      if (fileExtension !== 'mp3') {
-        try {
-          finalBuffer = await toAudio(audioBuffer, fileExtension);
-          if (!finalBuffer || finalBuffer.length === 0) {
-            throw new Error('Conversion returned empty buffer');
-          }
-        } catch (convErr) {
-          throw new Error(`Failed to convert ${detectedFormat} to MP3: ${convErr.message}`);
+        let fileExtension = 'mp3';
+
+        if (asciiSignature === 'ftyp' || hexSignature.startsWith('000000')) {
+            fileExtension = 'm4a';
+        } else if (audioBuffer.toString('ascii', 0, 4) === 'OggS') {
+            fileExtension = 'ogg';
+        } else if (audioBuffer.toString('ascii', 0, 4) === 'RIFF') {
+            fileExtension = 'wav';
         }
-      }
 
-      // Send buffer as MP3
-      await conn.sendMessage(m.chat, {
-        audio: finalBuffer,
-        mimetype: finalMimetype,
-        fileName: `${(audioData.title || video.title || 'song').replace(/[^\w\s-]/g, '')}.${finalExtension}`,
-        ptt: false
-      }, { quoted: m });
-
-      // Cleanup
-      try {
-        const tempDir = path.join(__dirname, '../temp');
-        if (fs.existsSync(tempDir)) {
-          const files = fs.readdirSync(tempDir);
-          const now = Date.now();
-          files.forEach(file => {
-            const filePath = path.join(tempDir, file);
+        // Si no es MP3, intentar convertir (si tienes la función toAudio)
+        if (fileExtension !== 'mp3') {
             try {
-              const stats = fs.statSync(filePath);
-              if (now - stats.mtimeMs > 10000) {
-                if (file.endsWith('.mp3') || file.endsWith('.m4a') || /^\d+\.(mp3|m4a)$/.test(file)) {
-                  fs.unlinkSync(filePath);
-                }
-              }
-            } catch (e) {}
-          });
+                const { toAudio } = require('../utils/converter');
+                finalBuffer = await toAudio(audioBuffer, fileExtension);
+            } catch (convErr) {
+                console.log('[song] Error conversión, usando buffer original');
+                finalBuffer = audioBuffer;
+            }
         }
-      } catch (cleanupErr) {}
+
+        await conn.sendMessage(m.chat, {
+            text: `> ✅ *Descarga completada, enviando...*`,
+            edit: statusMsg.key
+        });
+
+        const sizeMB = (finalBuffer.length / 1024 / 1024).toFixed(1);
+
+        await m.react('📤');
+
+        // Enviar como documento MP3 (diseño play2)
+        await conn.sendMessage(m.chat, {
+            document: finalBuffer,
+            mimetype: 'audio/mpeg',
+            fileName: `${(audioData.title || video.title || 'cancion').substring(0, 50).replace(/[<>:"/\\|?*]/g, '')}.mp3`,
+            caption: video.url,
+            contextInfo: {
+                externalAdReply: {
+                    title: `𝚈𝚘𝚞𝚃𝚞𝚋𝚎 𝙼𝚞𝚜𝚒𝚌`,
+                    body: `${audioData.title || video.title || 'Canción'} • ${sizeMB} MB`,
+                    thumbnailUrl: video.thumbnail,
+                    sourceUrl: video.url,
+                    mediaType: 1,
+                    renderLargerThumbnail: true
+                }
+            }
+        }, { quoted: m });
+
+        await m.react('✅');
+
+        // Cleanup
+        try {
+            const tempDir = path.join(__dirname, '../temp');
+            if (fs.existsSync(tempDir)) {
+                const files = fs.readdirSync(tempDir);
+                const nowTime = Date.now();
+                files.forEach(file => {
+                    const filePath = path.join(tempDir, file);
+                    try {
+                        const stats = fs.statSync(filePath);
+                        if (nowTime - stats.mtimeMs > 10000) {
+                            if (file.endsWith('.mp3') || file.endsWith('.m4a') || file.endsWith('.ogg')) {
+                                fs.unlinkSync(filePath);
+                            }
+                        }
+                    } catch (e) {}
+                });
+            }
+        } catch (cleanupErr) {}
 
     } catch (err) {
-      console.error('Song command error:', err);
+        console.error('[song]', err?.message || err);
+        await m.react('❌');
 
-      let errorMessage = '❌ Error al descargar la canción.';
-      if (err.message && err.message.includes('blocked')) {
-        errorMessage = '❌ Descarga bloqueada. El contenido puede no estar disponible en tu región.';
-      } else if (err.response?.status === 451 || err.status === 451) {
-        errorMessage = '❌ Contenido no disponible (451). Esto puede deberse a restricciones legales.';
-      } else if (err.message && err.message.includes('All download sources failed')) {
-        errorMessage = '❌ Todas las fuentes de descarga fallaron. El contenido puede no estar disponible.';
-      }
+        let errorMsg = 'No pude procesarlo';
+        if (err?.message === 'Muy largo') errorMsg = 'Máximo 2 horas';
+        else if (err?.message === 'No encontrado') errorMsg = 'No encontré resultados';
+        else if (err?.message === 'SIN_LINK_DESCARGA') errorMsg = 'No pude obtener el link';
+        else if (err?.message?.includes('blocked') || err?.response?.status === 451) {
+            errorMsg = 'Contenido bloqueado o no disponible';
+        }
 
-      await conn.sendMessage(m.chat, { 
-        text: errorMessage 
-      }, { quoted: m });
+        m.reply(`> 🎵 *Error: ${errorMsg}*`);
+
+    } finally {
+        activeDownloads.delete(userId);
     }
 };
 
-handler.help = ['song'];
+handler.help = ['play'];
 handler.tags = ['media', 'downloader'];
-handler.command = /^(song)$/i;
+handler.command = /^(play)$/i;
 handler.register = true;
+handler.group = true;
 
 module.exports = handler;

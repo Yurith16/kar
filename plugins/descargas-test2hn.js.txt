@@ -1,12 +1,8 @@
 const axios = require('axios');
 const yts = require('yt-search');
-const ffmpeg = require('fluent-ffmpeg');
-const ffmpegPath = require('ffmpeg-static');
 const fs = require('fs');
 const path = require('path');
 const { checkReg } = require('../lib/checkReg.js');
-
-ffmpeg.setFfmpegPath(ffmpegPath);
 
 const activeVideoDownloads = new Map();
 const lastUsage = new Map();
@@ -31,41 +27,54 @@ const cleanFiles = (files) => {
     });
 };
 
-const downloadWithRetry = async (url, outputPath, maxRetries = 2) => {
-    for (let i = 0; i < maxRetries; i++) {
-        try {
-            const response = await axios({ 
-                url: url, 
-                method: 'GET', 
-                responseType: 'stream', 
-                timeout: 300000 
-            });
+const downloadWithProgress = async (url, outputPath, conn, m, statusMsg) => {
+    const response = await axios({ 
+        url: url, 
+        method: 'GET', 
+        responseType: 'stream', 
+        timeout: 300000,
+        maxContentLength: 650 * 1024 * 1024,
+        maxBodyLength: 650 * 1024 * 1024
+    });
 
-            const writer = fs.createWriteStream(outputPath);
-            response.data.pipe(writer);
+    const totalLength = response.headers['content-length'];
+    let downloadedLength = 0;
+    let lastPercent = -10;
 
-            await new Promise((resolve, reject) => {
-                writer.on('finish', resolve);
-                writer.on('error', reject);
-            });
+    const writer = fs.createWriteStream(outputPath);
 
-            const stats = fs.statSync(outputPath);
-            if (stats.size === 0) throw new Error('Vacío');
-            if (stats.size > 650 * 1024 * 1024) throw new Error('PESO_EXCEDIDO');
+    response.data.on('data', async (chunk) => {
+        downloadedLength += chunk.length;
 
-            const isValid = await new Promise((resolve) => {
-                ffmpeg.ffprobe(outputPath, (err) => resolve(!err));
-            });
+        if (totalLength) {
+            const percent = Math.floor((downloadedLength / totalLength) * 100);
+            const displayPercent = Math.floor(percent / 10) * 10;
 
-            if (isValid) return stats.size;
-            throw new Error('Corrupto');
-
-        } catch (e) {
-            cleanFiles([outputPath]);
-            if (i === maxRetries - 1) throw e;
-            await new Promise(r => setTimeout(r, 2000));
+            if (displayPercent >= lastPercent + 10 && displayPercent <= 90) {
+                lastPercent = displayPercent;
+                console.log(`[Download] ${displayPercent}%`);
+                try {
+                    await conn.sendMessage(m.chat, {
+                        text: `> ⏳ *Descargando...* ${displayPercent}%`,
+                        edit: statusMsg.key
+                    });
+                } catch (e) {}
+            }
         }
-    }
+    });
+
+    response.data.pipe(writer);
+
+    await new Promise((resolve, reject) => {
+        writer.on('finish', resolve);
+        writer.on('error', reject);
+    });
+
+    const stats = fs.statSync(outputPath);
+    if (stats.size === 0) throw new Error('Vacío');
+    if (stats.size > 650 * 1024 * 1024) throw new Error('PESO_EXCEDIDO');
+
+    return stats.size;
 };
 
 let handler = async (m, { conn, text }) => {
@@ -84,8 +93,7 @@ let handler = async (m, { conn, text }) => {
     }
     lastUsage.set(userId, now);
 
-    let tempRaw = null;
-    let tempFixed = null;
+    let tempFile = null;
 
     if (!text) return m.reply(`> 🎬 *¿Qué video deseas ver?*`);
 
@@ -96,8 +104,7 @@ let handler = async (m, { conn, text }) => {
     const tmpDir = path.join(process.cwd(), 'tmp');
     if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir);
 
-    tempRaw = path.join(tmpDir, `raw_${Date.now()}`);
-    tempFixed = path.join(tmpDir, `vid_${Date.now()}.mp4`);
+    tempFile = path.join(tmpDir, `vid_${Date.now()}.mp4`);
 
     try {
         activeVideoDownloads.set(userId, true);
@@ -107,11 +114,13 @@ let handler = async (m, { conn, text }) => {
         let videoInfo;
 
         if (!text.includes('youtu.be') && !text.includes('youtube.com')) {
+            // Búsqueda por texto
             const search = await yts(text);
             if (!search.videos.length) throw new Error('No encontrado');
             videoInfo = search.videos[0];
             videoUrl = videoInfo.url;
         } else {
+            // URL proporcionada directamente
             const videoId = extractYouTubeId(text);
             if (!videoId) throw new Error('URL inválida');
             videoInfo = await yts({ videoId });
@@ -130,68 +139,36 @@ let handler = async (m, { conn, text }) => {
 
         const apiUrl = `http://217.154.161.167:12377/play2?url=${encodeURIComponent(videoUrl)}`;
 
+        console.log('[play2] Consultando API:', apiUrl);
+
         let apiRes;
         try {
             apiRes = await axios.get(apiUrl, { timeout: 30000 });
+            console.log('[play2] Respuesta API:', apiRes.data);
         } catch (e) {
+            console.error('[play2] Error API:', e.message);
             throw new Error('API_NO_RESPONDE');
         }
 
-        if (!apiRes.data?.ytdl) throw new Error('SIN_LINK_DESCARGA');
+        // La API ahora usa 'download' en lugar de 'ytdl'
+        const downloadUrl = apiRes.data?.download || apiRes.data?.ytdl;
 
-        const downloadUrl = apiRes.data.ytdl;
-
-        await downloadWithRetry(downloadUrl, tempRaw);
-
-        let lastPercent = -30;
-
-        await new Promise((resolve, reject) => {
-            ffmpeg(tempRaw)
-                .videoCodec('libx264')
-                .audioCodec('aac')
-                .size('360x?')
-                .outputOptions([
-                    '-preset ultrafast',
-                    '-movflags +faststart',
-                    '-threads 0',
-                    '-pix_fmt yuv420p'
-                ])
-                .on('progress', async (p) => {
-                    const percent = Math.floor(p.percent);
-                    const displayPercent = Math.floor(percent / 30) * 30;
-
-                    if (displayPercent >= lastPercent + 30 && displayPercent <= 90) {
-                        lastPercent = displayPercent;
-                        console.log(`[FFmpeg] ${displayPercent}%`);
-                        try {
-                            await conn.sendMessage(m.chat, {
-                                text: `> ⚙️ *Procesando...* ${displayPercent}%`,
-                                edit: statusMsg.key
-                            });
-                        } catch (e) {}
-                    }
-                })
-                .on('end', async () => {
-                    try {
-                        await conn.sendMessage(m.chat, {
-                            text: `> ✅ *Listo*`,
-                            edit: statusMsg.key
-                        });
-                    } catch (e) {}
-                    resolve();
-                })
-                .on('error', reject)
-                .save(tempFixed);
-        });
-
-        if (!fs.existsSync(tempFixed) || fs.statSync(tempFixed).size === 0) {
-            throw new Error('Error');
+        if (!downloadUrl) {
+            console.error('[play2] No se encontró link de descarga en respuesta:', apiRes.data);
+            throw new Error('SIN_LINK_DESCARGA');
         }
 
-        cleanFiles([tempRaw]);
-        tempRaw = null;
+        console.log('[play2] URL descarga:', downloadUrl);
 
-        const buffer = fs.readFileSync(tempFixed);
+        // Descargar directamente sin FFmpeg
+        await downloadWithProgress(downloadUrl, tempFile, conn, m, statusMsg);
+
+        await conn.sendMessage(m.chat, {
+            text: `> ✅ *Descarga completada, enviando...*`,
+            edit: statusMsg.key
+        });
+
+        const buffer = fs.readFileSync(tempFile);
         const sizeMB = (buffer.length / 1024 / 1024).toFixed(1);
 
         await m.react('📤');
@@ -215,8 +192,8 @@ let handler = async (m, { conn, text }) => {
 
         await m.react('✅');
 
-        cleanFiles([tempFixed]);
-        tempFixed = null;
+        cleanFiles([tempFile]);
+        tempFile = null;
 
     } catch (e) {
         console.error('[play2]', e.message);
@@ -229,13 +206,12 @@ let handler = async (m, { conn, text }) => {
         else if (e.message === 'URL inválida') errorMsg = 'URL inválida';
         else if (e.message === 'SIN_LINK_DESCARGA') errorMsg = 'No pude obtener el link';
         else if (e.message === 'API_NO_RESPONDE') errorMsg = 'La API no responde';
-        else if (e.message.includes('FFmpeg')) errorMsg = 'Error de conversión';
 
         m.reply(`> 🎬 *Error: ${errorMsg}*`);
 
     } finally {
         activeVideoDownloads.delete(userId);
-        cleanFiles([tempRaw, tempFixed]);
+        cleanFiles([tempFile]);
     }
 };
 

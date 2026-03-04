@@ -1,0 +1,224 @@
+const axios = require('axios');
+const yts = require('yt-search');
+const fs = require('fs');
+const path = require('path');
+const { checkReg } = require('../lib/checkReg.js');
+
+const activeAudioDownloads = new Map();
+const lastUsage = new Map();
+
+function extractYouTubeId(url) {
+    const patterns = [
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/|youtube\.com\/shorts\/|youtube\.com\/watch\?.*v=)([a-zA-Z0-9_-]{11})/,
+        /^([a-zA-Z0-9_-]{11})$/
+    ];
+    for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match) return match[1];
+    }
+    return null;
+}
+
+const cleanFiles = (files) => {
+    files.forEach(f => {
+        try {
+            if (fs.existsSync(f)) fs.unlinkSync(f);
+        } catch (e) {}
+    });
+};
+
+const downloadWithProgress = async (url, outputPath, conn, m, statusMsg) => {
+    const response = await axios({ 
+        url: url, 
+        method: 'GET', 
+        responseType: 'stream', 
+        timeout: 300000,
+        maxContentLength: 100 * 1024 * 1024, // 100MB para audio
+        maxBodyLength: 100 * 1024 * 1024
+    });
+
+    const totalLength = response.headers['content-length'];
+    let downloadedLength = 0;
+    let lastPercent = -10;
+
+    const writer = fs.createWriteStream(outputPath);
+
+    response.data.on('data', async (chunk) => {
+        downloadedLength += chunk.length;
+
+        if (totalLength) {
+            const percent = Math.floor((downloadedLength / totalLength) * 100);
+            const displayPercent = Math.floor(percent / 10) * 10;
+
+            if (displayPercent >= lastPercent + 10 && displayPercent <= 90) {
+                lastPercent = displayPercent;
+                console.log(`[Download Audio] ${displayPercent}%`);
+                try {
+                    await conn.sendMessage(m.chat, {
+                        text: `> ⏳ *Descargando audio...* ${displayPercent}%`,
+                        edit: statusMsg.key
+                    });
+                } catch (e) {}
+            }
+        }
+    });
+
+    response.data.pipe(writer);
+
+    await new Promise((resolve, reject) => {
+        writer.on('finish', resolve);
+        writer.on('error', reject);
+    });
+
+    const stats = fs.statSync(outputPath);
+    if (stats.size === 0) throw new Error('Vacío');
+    if (stats.size > 100 * 1024 * 1024) throw new Error('PESO_EXCEDIDO');
+
+    return stats.size;
+};
+
+let handler = async (m, { conn, text }) => {
+    const userId = m.sender;
+    const user = global.db.data.users[userId];
+
+    // Sistema de registro
+    if (await checkReg(m, user)) return;
+
+    // Rate limiting: 5 segundos entre comandos
+    const now = Date.now();
+    const lastUse = lastUsage.get(userId) || 0;
+    if (now - lastUse < 5000) {
+        const wait = Math.ceil((5000 - (now - lastUse)) / 1000);
+        return m.reply(`> ⏳ *Espera ${wait}s antes de usar el comando de nuevo.*`);
+    }
+    lastUsage.set(userId, now);
+
+    let tempFile = null;
+
+    if (!text) return m.reply(`> 🎵 *¿Qué audio deseas escuchar?*`);
+
+    if (activeAudioDownloads.has(userId)) {
+        return m.reply(`> ⏳ *Espera, ya proceso uno.*`);
+    }
+
+    const tmpDir = path.join(process.cwd(), 'tmp');
+    if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir);
+
+    tempFile = path.join(tmpDir, `audio_${Date.now()}.mp3`);
+
+    try {
+        activeAudioDownloads.set(userId, true);
+        await m.react('🔍');
+
+        let videoUrl = text;
+        let videoInfo;
+
+        if (!text.includes('youtu.be') && !text.includes('youtube.com')) {
+            // Búsqueda por texto
+            const search = await yts(text);
+            if (!search.videos.length) throw new Error('No encontrado');
+            videoInfo = search.videos[0];
+            videoUrl = videoInfo.url;
+        } else {
+            // URL proporcionada directamente
+            const videoId = extractYouTubeId(text);
+            if (!videoId) throw new Error('URL inválida');
+            videoInfo = await yts({ videoId });
+            videoUrl = `https://youtu.be/${videoId}`;
+        }
+
+        const { title, duration, thumbnail, url } = videoInfo;
+
+        if (duration.seconds > 7200) throw new Error('Muy largo');
+
+        const statusMsg = await conn.sendMessage(m.chat, {
+            text: `> ⏳ *Procesando audio...*`
+        }, { quoted: m });
+
+        await m.react('📥');
+
+        // Usar endpoint /play en lugar de /play2 para audio
+        const apiUrl = `http://217.154.161.167:12377/play?url=${encodeURIComponent(videoUrl)}`;
+
+        console.log('[play] Consultando API:', apiUrl);
+
+        let apiRes;
+        try {
+            apiRes = await axios.get(apiUrl, { timeout: 30000 });
+            console.log('[play] Respuesta API:', apiRes.data);
+        } catch (e) {
+            console.error('[play] Error API:', e.message);
+            throw new Error('API_NO_RESPONDE');
+        }
+
+        // La API usa 'download' o 'ytdl' para el link de descarga
+        const downloadUrl = apiRes.data?.download || apiRes.data?.ytdl;
+
+        if (!downloadUrl) {
+            console.error('[play] No se encontró link de descarga en respuesta:', apiRes.data);
+            throw new Error('SIN_LINK_DESCARGA');
+        }
+
+        console.log('[play] URL descarga:', downloadUrl);
+
+        // Descargar audio
+        await downloadWithProgress(downloadUrl, tempFile, conn, m, statusMsg);
+
+        await conn.sendMessage(m.chat, {
+            text: `> ✅ *Descarga completada, enviando...*`,
+            edit: statusMsg.key
+        });
+
+        const buffer = fs.readFileSync(tempFile);
+        const sizeMB = (buffer.length / 1024 / 1024).toFixed(1);
+
+        await m.react('📤');
+
+        await conn.sendMessage(m.chat, {
+            document: buffer,
+            mimetype: 'audio/mpeg',
+            fileName: `${title.substring(0, 50).replace(/[<>:"/\\|?*]/g, '')}.mp3`,
+            caption: url,
+            contextInfo: {
+                externalAdReply: {
+                    title: `𝚈𝚘𝚞𝚃𝚞𝚋𝚎 𝙼𝚞𝚜𝚒𝚌`,
+                    body: `${title} • ${sizeMB} MB`,
+                    thumbnailUrl: thumbnail,
+                    sourceUrl: url,
+                    mediaType: 1,
+                    renderLargerThumbnail: true
+                }
+            }
+        }, { quoted: m });
+
+        await m.react('✅');
+
+        cleanFiles([tempFile]);
+        tempFile = null;
+
+    } catch (e) {
+        console.error('[play]', e.message);
+        await m.react('❌');
+
+        let errorMsg = 'No pude procesarlo';
+        if (e.message === 'Muy largo') errorMsg = 'Máximo 2 horas';
+        else if (e.message === 'PESO_EXCEDIDO') errorMsg = 'Máximo 100MB';
+        else if (e.message === 'No encontrado') errorMsg = 'No encontré resultados';
+        else if (e.message === 'URL inválida') errorMsg = 'URL inválida';
+        else if (e.message === 'SIN_LINK_DESCARGA') errorMsg = 'No pude obtener el link';
+        else if (e.message === 'API_NO_RESPONDE') errorMsg = 'La API no responde';
+
+        m.reply(`> 🎵 *Error: ${errorMsg}*`);
+
+    } finally {
+        activeAudioDownloads.delete(userId);
+        cleanFiles([tempFile]);
+    }
+};
+
+handler.tags = ['downloader'];
+handler.help = ['play', 'ytmp3'];
+handler.command = ['play', 'ytmp3'];
+handler.group = true;
+
+module.exports = handler;
